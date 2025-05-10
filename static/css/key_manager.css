@@ -1,0 +1,289 @@
+/* API Key Management Styles */
+
+/* Key status badges */
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.status-badge.active {
+    background-color: #4caf50;
+    color: white;
+}
+
+.status-badge.rotating {
+    background-color: #2196f3;
+    color: white;
+}
+
+.status-badge.expired {
+    background-color: #9e9e9e;
+    color: white;
+}
+
+.status-badge.revoked {
+    background-color: #f44336;
+    color: white;
+}
+
+.status-badge.compromised {
+    background-color: #9c27b0;
+    color: white;
+}
+
+/* Key info card */
+.key-info {
+    background-color: #f5f5f5;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.status-active {
+    color: #4caf50;
+    font-weight: bold;
+}
+
+/* Expiration warning */
+.expiration-warning {
+    background-color: #fff3cd;
+    color: #856404;
+    padding: 10px;
+    border-radius: 4px;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.expiration-warning .icon-warning {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+/* Emergency actions */
+.emergency {
+    border: 1px solid #f44336;
+    border-radius: 4px;
+}
+
+.emergency h2 {
+    color: #f44336;
+}
+
+.emergency-actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.warning {
+    background-color: #ffebee;
+    color: #f44336;
+    padding: 10px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+}
+
+.warning .icon-warning {
+    margin-right: 10px;
+    font-size: 1.2rem;
+}
+
+/* Expiring keys alert */
+.expiring-keys-alert {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.expiring-keys-alert h3 {
+    color: #856404;
+    margin-top: 0;
+}
+
+.expiring-keys-alert ul {
+    padding-left: 20px;
+}
+
+.expiring-keys-alert li {
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Modal styles */
+.modal {
+    display: block;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 4px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.key-details {
+    margin-top: 20px;
+}
+
+/* Table styles */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+.table th, .table td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+.table tr:hover {
+    background-color: #f9f9f9;
+}
+
+/* Button styles */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.3s;
+}
+
+.btn-primary {
+    background-color: #2196f3;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #0b7dda;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+.btn-danger {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #d32f2f;
+}
+
+.btn-warning {
+    background-color: #ff9800;
+    color: white;
+}
+
+.btn-warning:hover {
+    background-color: #e68a00;
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+/* Form styles */
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+/* Card styles */
+.card {
+    background-color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.card h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .emergency-actions {
+        flex-direction: column;
+    }
+    
+    .table {
+        display: block;
+        overflow-x: auto;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 5% auto;
+    }
+}

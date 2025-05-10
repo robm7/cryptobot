@@ -1,0 +1,93 @@
+#!/bin/bash
+# Pre-commit hook to validate token usage before committing changes
+# 
+# Installation: 
+#   1. Copy this file to .git/hooks/pre-commit
+#   2. Make it executable: chmod +x .git/hooks/pre-commit
+#
+# This hook will prevent commits that would cause token usage to exceed limits.
+
+set -e
+
+echo "⏳ Running token validation checks..."
+
+# Get the current branch
+current_branch=$(git rev-parse --abbrev-ref HEAD)
+echo "Current branch: $current_branch"
+
+# Save current workspace state
+git stash -q --keep-index
+
+# Function to clean up on exit
+cleanup() {
+  echo "Restoring working directory state..."
+  git stash pop -q 2>/dev/null || true
+}
+
+# Register cleanup function to run on exit
+trap cleanup EXIT
+
+# Define color codes for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
+
+# Run token validation with reduced token budget to provide safety margin
+echo "Running token validation..."
+validation_output=$(python token_optimization_system.py --validate-ci --token-budget=68000 --quick-check 2>&1) || {
+  echo -e "${RED}❌ Token validation failed${NC}"
+  echo "$validation_output"
+  echo -e "${RED}Commit aborted. Please optimize token usage before committing.${NC}"
+  echo "Run 'python token_optimization_system.py --check-usage' for details."
+  exit 1
+}
+
+# Extract token usage from validation output
+token_usage=$(echo "$validation_output" | grep -oP 'Current usage: \K[0-9]+' || echo "Unknown")
+budget=$(echo "$validation_output" | grep -oP 'Budget: \K[0-9]+' || echo "76659")
+
+# Calculate percentage if possible
+if [[ "$token_usage" != "Unknown" ]]; then
+  percentage=$(( (token_usage * 100) / budget ))
+  
+  echo -e "Token usage: $token_usage / $budget tokens (${percentage}%)"
+  
+  # Warn if usage is above 70%
+  if [ "$percentage" -ge 90 ]; then
+    echo -e "${RED}❌ ERROR: Token usage is critically high (${percentage}%)${NC}"
+    echo "Commit aborted. Please optimize your code to reduce token usage."
+    exit 1
+  elif [ "$percentage" -ge 80 ]; then
+    echo -e "${RED}❌ ERROR: Token usage is very high (${percentage}%)${NC}"
+    echo "Commit aborted. Please optimize your code to reduce token usage."
+    exit 1
+  elif [ "$percentage" -ge 70 ]; then
+    echo -e "${YELLOW}⚠️ WARNING: Token usage is approaching limits (${percentage}%)${NC}"
+    echo "Consider optimizing your code to reduce token usage."
+    
+    # Ask user if they want to continue
+    exec < /dev/tty
+    read -p "Do you want to continue with the commit? [y/N] " response
+    if [[ ! "$response" =~ ^[Yy]$ ]]; then
+      echo "Commit aborted."
+      exit 1
+    fi
+  else
+    echo -e "${GREEN}✅ Token usage is within acceptable limits${NC}"
+  fi
+else
+  echo -e "${YELLOW}⚠️ Warning: Could not determine exact token usage${NC}"
+  echo "Continuing anyway. Please run a manual check if concerned."
+fi
+
+# Run a basic token optimization test
+echo "Running token optimization tests..."
+if ! python -m pytest tests/integration/test_token_optimization.py::TokenOptimizationIntegrationTest::test_end_to_end_processing_small_log -v; then
+  echo -e "${RED}❌ Token optimization tests failed${NC}"
+  echo "Commit aborted. Please fix the test failures before committing."
+  exit 1
+fi
+
+echo -e "${GREEN}✅ All token validation checks passed!${NC}"
+exit 0

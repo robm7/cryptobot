@@ -1,0 +1,101 @@
+/* Base styles beyond Tailwind */
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #121826;
+  color: #f3f4f6;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* Mobile navigation adjustments */
+@media (max-width: 768px) {
+  main {
+    margin-bottom: 60px; /* Space for mobile nav */
+  }
+}
+
+/* Chart tooltips */
+.chartjs-tooltip {
+  background-color: rgba(31, 41, 55, 0.9);
+  border-radius: 4px;
+  color: #f3f4f6;
+  border: 1px solid #374151;
+}
+
+/* Candlestick specific styles */
+.candlestick-up {
+  fill: rgba(75, 192, 192, 0.2);
+  stroke: rgba(75, 192, 192, 1);
+}
+.candlestick-down {
+  fill: rgba(255, 99, 132, 0.2);
+  stroke: rgba(255, 99, 132, 1);
+}
+
+/* Background circuit pattern */
+.circuit-bg {
+  background-image: radial-gradient(circle at 25px 25px, rgba(75, 192, 192, 0.1) 2px, transparent 0),
+    radial-gradient(circle at 75px 75px, rgba(255, 99, 132, 0.1) 2px, transparent 0),
+    linear-gradient(rgba(31, 41, 55, 0.3) 1px, transparent 0),
+    linear-gradient(90deg, rgba(31, 41, 55, 0.3) 1px, transparent 0);
+  background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+  background-position: 0 0, 0 0, -1px -1px, -1px -1px;
+}
+
+/* Button animation */
+.animated-button {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.animated-button:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300%;
+  height: 300%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.5s ease;
+  z-index: -1;
+}
+.animated-button:hover:before {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Stats card glow effect */
+.glow-card {
+  position: relative;
+  overflow: hidden;
+}
+.glow-card:after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 70%);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.glow-card:hover:after {
+  opacity: 1;
+}

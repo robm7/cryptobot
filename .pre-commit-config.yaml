@@ -1,0 +1,33 @@
+repos:
+  - repo: local
+    hooks:
+      - id: token-validation
+        name: Token Validation
+        description: Validate that files stay within token limits
+        entry: python scripts/validate_tokens.py
+        language: system
+        types: [text]
+        args: ["--files", "$(git diff --cached --name-only)", "--token-budget", "76659"]
+        verbose: true
+        
+      - id: token-report
+        name: Generate Token Report
+        description: Generate a report on token usage
+        entry: python token_optimization_system.py
+        language: system
+        pass_filenames: false
+        args: ["--check-usage"]
+        always_run: true
+        stages: [commit]
+        
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+
+# This allows bypassing the token validation in emergency situations
+# To bypass: git commit --no-verify

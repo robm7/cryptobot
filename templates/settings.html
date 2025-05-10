@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Management</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="/static/css/key_manager.css">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1>API Key Management</h1>
+        
+        <!-- Expiring keys alert will be inserted here by JS -->
+        
+        <div class="card">
+            <h2>Current API Key</h2>
+            <div id="current-key-info" class="key-info">
+                <!-- Dynamically populated -->
+                <p>Loading key information...</p>
+            </div>
+            <button id="rotate-key-btn" class="btn btn-primary">
+                <i class="fas fa-sync-alt"></i> Rotate Key
+            </button>
+        </div>
+
+        <div class="card">
+            <h2>Key Rotation Settings</h2>
+            <div class="form-group">
+                <label for="rotation-days">Default expiration period (days):</label>
+                <input type="number" id="rotation-days" min="1" max="365" value="90">
+            </div>
+            <p class="help-text">This setting determines how long new API keys will be valid before expiration.</p>
+            <button id="save-settings-btn" class="btn btn-secondary">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+
+        <div class="card">
+            <h2>Key History</h2>
+            <div class="table-responsive">
+                <table id="key-history-table" class="table">
+                    <thead>
+                        <tr>
+                            <th>Key ID</th>
+                            <th>Created</th>
+                            <th>Expires</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Dynamically populated -->
+                        <tr>
+                            <td colspan="5">Loading key history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card emergency">
+            <h2><i class="fas fa-exclamation-triangle"></i> Emergency Actions</h2>
+            <div class="emergency-actions">
+                <button id="revoke-all-btn" class="btn btn-danger">
+                    <i class="fas fa-ban"></i> Revoke All Keys
+                </button>
+                <button id="revoke-current-btn" class="btn btn-warning">
+                    <i class="fas fa-shield-alt"></i> Mark Current Key as Compromised
+                </button>
+            </div>
+            <div class="warning">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>These actions will immediately invalidate API keys and cannot be undone</span>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2><i class="fas fa-info-circle"></i> About API Key Rotation</h2>
+            <div class="info-text">
+                <p>API key rotation is a security best practice that involves regularly replacing API keys to limit the damage that could be caused if a key is compromised.</p>
+                <p><strong>Key Status Meanings:</strong></p>
+                <ul>
+                    <li><span class="status-badge active">Active</span> - Currently valid key</li>
+                    <li><span class="status-badge rotating">Rotating</span> - Previous key in grace period</li>
+                    <li><span class="status-badge expired">Expired</span> - Key that has reached end of life</li>
+                    <li><span class="status-badge revoked">Revoked</span> - Key that was manually invalidated</li>
+                    <li><span class="status-badge compromised">Compromised</span> - Key that was marked as security risk</li>
+                </ul>
+                <p><strong>Grace Period:</strong> When you rotate a key, the old key remains valid for 24 hours to allow for a smooth transition.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/key_manager.js"></script>
+</body>
+</html>

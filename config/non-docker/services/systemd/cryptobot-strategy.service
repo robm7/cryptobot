@@ -1,0 +1,28 @@
+[Unit]
+Description=CryptoBot Strategy Service
+After=network.target cryptobot-auth.service cryptobot-data.service
+Wants=network.target
+Requires=cryptobot-auth.service cryptobot-data.service
+
+[Service]
+Type=simple
+User=cryptobot
+Group=cryptobot
+WorkingDirectory=/opt/cryptobot
+ExecStart=/usr/bin/python3 -m uvicorn strategy.main:app --host 0.0.0.0 --port 8002 --workers 2
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cryptobot-strategy
+Environment="PYTHONPATH=/opt/cryptobot"
+EnvironmentFile=/opt/cryptobot/.env
+
+# Security settings
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

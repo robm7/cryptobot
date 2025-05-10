@@ -1,0 +1,46 @@
+# Backtest Service Configuration for Non-Docker Deployment
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1
+  debug: false
+
+# Application settings
+app:
+  name: "Backtest Service"
+  max_concurrent_backtests: 5
+  results_ttl_days: 7  # Days to keep backtest results
+
+# Database settings
+database:
+  url: sqlite:///./backtest.db  # SQLite for simplicity, can be changed to PostgreSQL
+  pool_size: 5
+  max_overflow: 10
+  echo: false
+
+# Data service settings
+data_service:
+  url: http://localhost:8001  # Data service URL
+
+# Strategy service settings
+strategy_service:
+  url: http://localhost:8000  # Strategy service URL
+
+# Logging
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/backtest_service.log
+
+# CORS settings
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+# Storage settings
+storage:
+  results_dir: "./backtest_results"
+  temp_dir: "./backtest_temp"

@@ -1,0 +1,7 @@
+fastapi==0.95.2
+uvicorn==0.22.0
+python-binance==1.0.19
+krakenex==2.1.0
+python-dotenv==1.0.0
+requests==2.31.0
+pydantic==1.10.7

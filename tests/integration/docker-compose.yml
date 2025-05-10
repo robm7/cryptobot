@@ -1,0 +1,174 @@
+version: '3.8'
+
+services:
+  # Database service
+  db:
+    image: postgres:14-alpine
+    environment:
+      POSTGRES_USER: cryptobot
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: cryptobot_test
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cryptobot"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis service
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Mock exchange service
+  mock_exchange:
+    build:
+      context: ./services/mock_exchange
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=INFO
+      - EXCHANGE_DELAY=0.1
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Auth service
+  auth:
+    build:
+      context: ../../auth
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - DB_URL=postgresql://cryptobot:testpassword@db:5432/cryptobot_test
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=test_secret_key
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=test
+    depends_on:
+      - db
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Strategy service
+  strategy:
+    build:
+      context: ../../strategy
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - DB_URL=postgresql://cryptobot:testpassword@db:5432/cryptobot_test
+      - AUTH_SERVICE_URL=http://auth:8001
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=test
+    depends_on:
+      - db
+      - auth
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Trade service
+  trade:
+    build:
+      context: ../../trade
+      dockerfile: Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - DB_URL=postgresql://cryptobot:testpassword@db:5432/cryptobot_test
+      - AUTH_SERVICE_URL=http://auth:8001
+      - STRATEGY_SERVICE_URL=http://strategy:8002
+      - EXCHANGE_URL=http://mock_exchange:8000
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=test
+    depends_on:
+      - db
+      - auth
+      - strategy
+      - mock_exchange
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Data service
+  data:
+    build:
+      context: ../../data
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - EXCHANGE_URL=http://mock_exchange:8000
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=test
+    depends_on:
+      - redis
+      - mock_exchange
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backtest service
+  backtest:
+    build:
+      context: ../../backtest
+      dockerfile: Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - DB_URL=postgresql://cryptobot:testpassword@db:5432/cryptobot_test
+      - AUTH_SERVICE_URL=http://auth:8001
+      - STRATEGY_SERVICE_URL=http://strategy:8002
+      - DATA_SERVICE_URL=http://data:8004
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=test
+    depends_on:
+      - db
+      - auth
+      - strategy
+      - data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: cryptobot_test_network

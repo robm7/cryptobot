@@ -1,0 +1,43 @@
+{
+  "mcp_routing": {
+    "portfolio_management": {
+      "server": "portfolio-manager",
+      "conditions": {
+        "task_contains": ["portfolio", "allocation", "rebalance"],
+        "file_pattern": "*portfolio*"
+      }
+    },
+    "reporting": {
+      "server": "reporting-service",
+      "conditions": {
+        "task_contains": ["report", "analytics", "metrics"],
+        "file_pattern": "*report*"
+      }
+    },
+    "exchange": {
+      "server": "exchange-gateway",
+      "conditions": {
+        "task_contains": ["exchange", "binance", "order", "trade"],
+        "file_pattern": "*exchange*"
+      }
+    },
+    "default": {
+      "server": "core-services",
+      "fallback": true
+    }
+  },
+  "server_configs": {
+    "portfolio-manager": {
+      "type": "local",
+      "command": "node services/mcp/portfolio-management/server.js"
+    },
+    "reporting-service": {
+      "type": "local", 
+      "command": "node services/mcp/reporting/server.js"
+    },
+    "core-services": {
+      "type": "remote",
+      "url": "http://localhost:3000/mcp"
+    }
+  }
+}

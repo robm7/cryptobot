@@ -1,0 +1,17 @@
+{
+  "entities": [
+    {
+      "name": "TestRun:20250507214218",
+      "entityType": "TestRun",
+      "observations": [
+        "Processed at 2025-05-07T21:42:18.776033",
+        "Original line count: 1471",
+        "Processed line count: 0",
+        "Compression ratio: 100.00%",
+        "Total failures: 0",
+        "Duplicate traces removed: 0"
+      ]
+    }
+  ],
+  "relations": []
+}

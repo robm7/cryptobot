@@ -1,0 +1,127 @@
+{
+  "title": "Data Service Dashboard",
+  "description": "Monitoring for the data service components",
+  "tags": ["cryptobot", "data", "monitoring"],
+  "timezone": "browser",
+  "editable": true,
+  "panels": [
+    {
+      "title": "Message Throughput",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(collector_messages_published[1m])",
+          "legendFormat": "Collector ({{exchange}})"
+        },
+        {
+          "expr": "rate(processor_messages_consumed[1m])",
+          "legendFormat": "Processor"
+        },
+        {
+          "expr": "rate(realtime_messages_delivered[1m])",
+          "legendFormat": "WebSocket"
+        },
+        {
+          "expr": "rate(historical_db_inserts[1m])",
+          "legendFormat": "Historical"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 }
+    },
+    {
+      "title": "Processing Latency",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(processor_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "Processor (95%)"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(processor_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "Processor (99%)"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 }
+    },
+    {
+      "title": "Active Connections",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "realtime_active_connections",
+          "legendFormat": "WebSocket"
+        }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 8 }
+    },
+    {
+      "title": "Subscriptions",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "realtime_subscriptions",
+          "legendFormat": "Active"
+        }
+      ],
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 8 }
+    },
+    {
+      "title": "Error Rates",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "rate(collector_errors[1m])",
+          "legendFormat": "Collector"
+        },
+        {
+          "expr": "rate(processor_errors[1m])",
+          "legendFormat": "Processor"
+        },
+        {
+          "expr": "rate(realtime_connection_errors[1m])",
+          "legendFormat": "WebSocket"
+        },
+        {
+          "expr": "rate(historical_errors[1m])",
+          "legendFormat": "Historical"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 }
+    },
+    {
+      "title": "Buffer Sizes",
+      "type": "graph",
+      "datasource": "Prometheus",
+      "targets": [
+        {
+          "expr": "processor_buffer_size",
+          "legendFormat": "Processor"
+        },
+        {
+          "expr": "historical_buffer_size",
+          "legendFormat": "Historical"
+        }
+      ],
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 }
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "exchange",
+        "label": "Exchange",
+        "type": "query",
+        "datasource": "Prometheus",
+        "query": "label_values(collector_messages_published, exchange)"
+      }
+    ]
+  },
+  "refresh": "30s",
+  "schemaVersion": 27,
+  "version": 1
+}

@@ -1,0 +1,96 @@
+.user-management-container {
+  padding: 20px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .user-management-container {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.filters input, .filters select {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.user-list table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.user-list th, .user-list td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+.user-list tr:hover {
+  background-color: #f5f5f5;
+}
+
+.activity-logs {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 4px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.activity-logs ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.activity-logs li {
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.dashboard-nav {
+  background: #2c3e50;
+  padding: 15px;
+}
+
+.dashboard-nav ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 15px;
+}
+
+.dashboard-nav li {
+  margin: 0;
+}
+
+.dashboard-nav a {
+  color: white;
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+}
+
+.dashboard-nav a:hover, .dashboard-nav .active a {
+  background: #34495e;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+
+.admin-main {
+  padding: 20px;
+}

@@ -1,0 +1,119 @@
+{
+  "services": {
+    "auth": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8000,
+      "workers": 1,
+      "description": "Authentication service",
+      "dependencies": []
+    },
+    "strategy": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8001,
+      "workers": 1,
+      "description": "Strategy management service",
+      "dependencies": ["auth"]
+    },
+    "data": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8002,
+      "workers": 1,
+      "description": "Market data service",
+      "dependencies": ["auth"]
+    },
+    "trade": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8003,
+      "workers": 1,
+      "description": "Trade execution service",
+      "dependencies": ["auth", "strategy", "data"]
+    },
+    "backtest": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8004,
+      "workers": 1,
+      "description": "Backtesting service",
+      "dependencies": ["auth", "strategy", "data"]
+    }
+  },
+  "database": {
+    "url": "sqlite:///cryptobot.db",
+    "pool_size": 5,
+    "max_overflow": 10,
+    "echo": false
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "cryptobot.log",
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+  "security": {
+    "secret_key": "your-secret-key-here",
+    "token_expiration": 3600,
+    "password_hash_algorithm": "argon2",
+    "argon2_time_cost": 3,
+    "argon2_memory_cost": 65536,
+    "argon2_parallelism": 4
+  },
+  "management_api": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8080
+  },
+  "config_ui": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8081
+  },
+  "auto_start": true,
+  "health_check": {
+    "interval": 30,
+    "auto_restart": true,
+    "max_restart_attempts": 3,
+    "restart_cooldown": 300
+  },
+  "resource_limits": {
+    "enabled": true,
+    "check_interval": 30,
+    "services": {
+      "auth": {
+        "cpu_percent": 50,
+        "memory_percent": 25,
+        "num_threads": 20
+      },
+      "strategy": {
+        "cpu_percent": 70,
+        "memory_percent": 30,
+        "num_threads": 30
+      },
+      "data": {
+        "cpu_percent": 60,
+        "memory_percent": 40,
+        "num_threads": 25
+      },
+      "trade": {
+        "cpu_percent": 50,
+        "memory_percent": 25,
+        "num_threads": 20
+      },
+      "backtest": {
+        "cpu_percent": 80,
+        "memory_percent": 50,
+        "num_threads": 40
+      }
+    }
+  },
+  "dashboard": {
+    "host": "0.0.0.0",
+    "port": 8090,
+    "refresh_interval": 5
+  },
+  "environment": "dev",
+  "profile": "default",
+  "config_dir": "./config"
+}

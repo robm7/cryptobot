@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CryptoBot - Backtest</title>
+    <link href="https://cdn.jsdelivr.net/npm/[email protected]/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/[email protected]/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+    <nav class="bg-gray-800 p-4 flex space-x-6 shadow-lg">
+      <a href="/" class="hover:text-blue-400 {% if request.path == '/' %}text-blue-400{% endif %}">Home</a>
+      <a href="/dashboard" class="hover:text-blue-400 {% if request.path == '/dashboard' %}text-blue-400{% endif %}">Dashboard</a>
+      <a href="/backtest" class="hover:text-blue-400 {% if request.path == '/backtest' %}text-blue-400{% endif %}">Backtest</a>
+      <a href="/settings" class="hover:text-blue-400 {% if request.path == '/settings' %}text-blue-400{% endif %}">Settings</a>
+    </nav>
+    <main class="flex-1 p-6 max-w-4xl mx-auto space-y-8">
+        <!-- Auth state container -->
+        <div id="auth-state" class="hidden bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div id="login-prompt" class="text-center py-8">
+                <h2 class="text-2xl font-bold mb-4">Please Login</h2>
+                <p class="mb-6">You need to be logged in to run backtests.</p>
+                <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors inline-block">
+                    Login
+                </a>
+            </div>
+            <div id="auth-error" class="hidden text-center py-8 text-red-400">
+                <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                <h2 class="text-2xl font-bold mb-2">Authorization Required</h2>
+                <p class="mb-6">Your session may have expired. Please login again.</p>
+                <a href="/login" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors inline-block">
+                    Re-Login
+                </a>
+            </div>
+        </div>
+
+        <section id="backtest-form" class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">Backtest Parameters</h2>
+            <form class="space-y-4">
+                <div>
+                    <label for="start-date" class="block mb-2 font-semibold">Start Date</label>
+                    <input type="date" id="start-date" name="start-date" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                <div>
+                    <label for="end-date" class="block mb-2 font-semibold">End Date</label>
+                    <input type="date" id="end-date" name="end-date" class="w-full p-2 rounded bg-gray-700 text-white">
+                </div>
+                <div>
+                    <label for="lookback-period" class="block mb-2 font-semibold">Lookback Period (5-200)</label>
+                    <input type="range" id="lookback-period" name="lookback-period" min="5" max="200" step="1" class="w-full">
+                </div>
+                <div>
+                    <label for="entry-zscore" class="block mb-2 font-semibold">Entry Z-Score (0.5-3.0)</label>
+                    <input type="range" id="entry-zscore" name="entry-zscore" min="0.5" max="3.0" step="0.1" class="w-full">
+                </div>
+                <div>
+                    <label for="exit-zscore" class="block mb-2 font-semibold">Exit Z-Score (0-2.0)</label>
+                    <input type="range" id="exit-zscore" name="exit-zscore" min="0" max="2.0" step="0.1" class="w-full">
+                </div>
+                <div>
+                    <label for="position-size" class="block mb-2 font-semibold">Position Size (0.01-1.0)</label>
+                    <input type="range" id="position-size" name="position-size" min="0.01" max="1.0" step="0.01" class="w-full">
+                </div>
+                <div>
+                    <label for="strategy-select" class="block mb-2 font-semibold">Select Strategy</label>
+                    <select id="strategy-select" name="strategy-select" class="w-full p-2 rounded bg-gray-700 text-white">
+                        <option value="breakout_reset">Breakout Reset</option>
+                        <option value="mean_reversion">Mean Reversion</option>
+                    </select>
+                </div>
+                <!-- New Risk Management Inputs -->
+                <div>
+                    <label for="risk-per-trade-pct" class="block mb-2 font-semibold">Risk Per Trade (%) <span class="text-xs text-gray-400">(Optional, default 2%)</span></label>
+                    <input type="number" id="risk-per-trade-pct" name="risk_per_trade_pct" min="0.1" max="10" step="0.1" placeholder="e.g., 1.0 for 1%" class="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-500">
+                </div>
+                <div>
+                    <label for="max-drawdown-pct" class="block mb-2 font-semibold">Max Drawdown (%) <span class="text-xs text-gray-400">(Optional, default 20%)</span></label>
+                    <input type="number" id="max-drawdown-pct" name="max_drawdown_pct" min="1" max="50" step="1" placeholder="e.g., 15 for 15%" class="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-500">
+                </div>
+                <div>
+                    <label for="position-size-pct" class="block mb-2 font-semibold">Position Size (%) <span class="text-xs text-gray-400">(Optional, default 100%)</span></label>
+                    <input type="number" id="position-size-pct" name="position_size_pct" min="1" max="100" step="1" placeholder="e.g., 50 for 50%" class="w-full p-2 rounded bg-gray-700 text-white placeholder-gray-500">
+                </div>
+                <!-- End New Risk Management Inputs -->
+                <div class="pt-4">
+                    <button type="button" id="backtest-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                        Run Backtest
+                    </button>
+                </div>
+            </form>
+        </section>
+        <section class="bg-gray-800 p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">Backtest Results</h2>
+            <div class="h-64 flex items-center justify-center text-gray-400 mb-4">
+                <!-- Equity curve chart -->
+                <canvas id="backtest-chart" class="w-full h-full"></canvas>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Return</h3>
+                    <p class="text-xl font-bold" id="return-pct">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Sharpe Ratio</h3>
+                    <p class="text-xl font-bold" id="sharpe-ratio">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Sortino Ratio</h3>
+                    <p class="text-xl font-bold" id="sortino-ratio">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Calmar Ratio</h3>
+                    <p class="text-xl font-bold" id="calmar-ratio">-</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Max Drawdown</h3>
+                    <p class="text-xl font-bold" id="max-drawdown">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Profit Factor</h3>
+                    <p class="text-xl font-bold" id="profit-factor">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Volatility</h3>
+                    <p class="text-xl font-bold" id="volatility">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Win Rate</h3>
+                    <p class="text-xl font-bold" id="win-rate">-</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Avg Win</h3>
+                    <p class="text-xl font-bold" id="avg-win">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Avg Loss</h3>
+                    <p class="text-xl font-bold" id="avg-loss">-</p>
+                </div>
+            </div>
+            
+            <!-- Drawdown Visualization Section -->
+            <div class="mt-8">
+                <h3 class="text-xl font-bold mb-4">Drawdown Analysis</h3>
+                <div class="h-64 flex items-center justify-center text-gray-400 mb-4">
+                    <canvas id="drawdown-chart" class="w-full h-full"></canvas>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-gray-800 rounded-lg overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-700">
+                                <th class="px-4 py-2 text-left">#</th>
+                                <th class="px-4 py-2 text-left">Start Date</th>
+                                <th class="px-4 py-2 text-left">End Date</th>
+                                <th class="px-4 py-2 text-left">Duration</th>
+                                <th class="px-4 py-2 text-left">Max Drawdown</th>
+                            </tr>
+                        </thead>
+                        <tbody id="drawdown-table">
+                            <!-- Drawdown periods will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Include Chart.js and the drawdown visualization script -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <script src="{{ url_for('static', filename='js/drawdown_chart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

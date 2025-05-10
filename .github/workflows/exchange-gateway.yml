@@ -1,0 +1,44 @@
+name: Exchange Gateway CI/CD
+
+on:
+  push:
+    paths:
+      - 'services/mcp/exchange-gateway/**'
+      - 'kong/exchange-gateway.yml'
+      - 'monitoring/grafana/dashboards/exchange-gateway.json'
+  pull_request:
+    paths:
+      - 'services/mcp/exchange-gateway/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          pip install -r services/mcp/exchange-gateway/requirements.txt
+          pip install pytest pytest-cov
+      - name: Run tests
+        run: |
+          cd services/mcp/exchange-gateway
+          pytest --cov=. --cov-report=xml
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Deploy to staging
+        run: |
+          echo "${{ secrets.STAGING_SSH_KEY }}" > key.pem
+          chmod 400 key.pem
+          ssh -i key.pem ${{ secrets.STAGING_SERVER }} \
+            "cd /opt/cryptobot && git pull && docker-compose up -d --build exchange-gateway"

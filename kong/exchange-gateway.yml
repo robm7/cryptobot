@@ -1,0 +1,31 @@
+services:
+  - name: exchange-gateway
+    url: http://exchange-gateway:8000
+    routes:
+      - name: exchange-gateway-api
+        paths: ["/api/exchanges"]
+        methods: ["GET", "POST", "DELETE"]
+        strip_path: true
+
+plugins:
+  - name: key-auth
+    service: exchange-gateway
+    config:
+      key_names: ["api-key"]
+      hide_credentials: true
+
+  - name: rate-limiting
+    service: exchange-gateway
+    config:
+      minute: 60
+      policy: local
+
+  - name: cors
+    service: exchange-gateway
+    config:
+      origins: ["*"]
+      methods: ["GET", "POST", "DELETE"]
+      headers: ["Content-Type", "Authorization"]
+      exposed_headers: ["x-ratelimit-limit", "x-ratelimit-remaining"]
+      credentials: true
+      max_age: 3600

@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Usage Monitoring Dashboard</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <style>
+        :root {
+            --primary-color: #4a8cff;
+            --danger-color: #ff4a4a;
+            --warning-color: #ffaa4a;
+            --success-color: #4aff4a;
+            --dark-bg: #212529;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: var(--light-bg);
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .dashboard-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .dashboard-actions button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .dashboard-actions button:hover {
+            background-color: #3a7ad5;
+        }
+        
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        .stat-card h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .percentage {
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .percentage.increase {
+            color: var(--success-color);
+        }
+        
+        .percentage.decrease {
+            color: var(--primary-color);
+        }
+        
+        .charts-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        
+        .chart-card h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 20px;
+        }
+        
+        .token-gauge {
+            position: relative;
+            height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .alerts-optimization {
+            margin-top: 20px;
+        }
+        
+        .alert-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .alert-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .alert-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .alert-level {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        
+        .alert-level.warning {
+            background-color: var(--warning-color);
+            color: white;
+        }
+        
+        .alert-level.danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        
+        .alert-level.info {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .alert-message {
+            margin-top: 10px;
+            color: #555;
+        }
+        
+        /* Predictive Analysis Styles */
+        .prediction-section {
+            margin-top: 30px;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .section-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            color: #333;
+        }
+        
+        .trend-status {
+            font-size: 14px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 4px;
+            background-color: #f0f0f0;
+        }
+        
+        .trend-status.positive {
+            background-color: rgba(74, 255, 74, 0.2);
+            color: #2a8c2a;
+        }
+        
+        .trend-status.negative {
+            background-color: rgba(255, 126, 74, 0.2);
+            color: #8c2a2a;
+        }
+        
+        .prediction-metrics {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .prediction-card {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .prediction-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .prediction-label {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .days-remaining {
+            text-align: center;
+        }
+        
+        .days-remaining .prediction-value {
+            font-size: 36px;
+            color: #4a8cff;
+        }
+        
+        .optimizations h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .optimization-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .optimization-item {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .optimization-item h4 {
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .optimization-item p {
+            margin: 0;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .recent-logs {
+            margin-top: 20px;
+        }
+        
+        .recent-logs h3 {
+            margin-top: 0;
+            color: #555;
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .log-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .log-table th,
+        .log-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .log-table th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .log-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .token-count {
+            font-weight: 600;
+        }
+        
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            border-radius: 4px;
+            background-color: var(--primary-color);
+        }
+        
+        .progress-bar.warning {
+            background-color: var(--warning-color);
+        }
+        
+        .progress-bar.danger {
+            background-color: var(--danger-color);
+        }
+        
+        @media (max-width: 768px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="dashboard-header">
+            <div class="dashboard-title">Token Usage Monitoring Dashboard</div>
+            <div class="dashboard-actions">
+                <button id="refreshBtn">Refresh Data</button>
+            </div>
+        </div>
+        
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Current Token Usage</h3>
+                <div class="stat-value" id="currentTokens">0</div>
+                <div class="percentage increase" id="tokenTrend">+0% from last run</div>
+                <div class="progress-container">
+                    <div class="progress-bar" id="tokenProgressBar" style="width: 0%"></div>
+                </div>
+                <div id="tokenBudgetText">0 / 76,659 tokens (0%)</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Compression Ratio</h3>
+                <div class="stat-value" id="compressionRatio">0%</div>
+                <div class="percentage increase" id="compressionTrend">+0% from average</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Processing Rate</h3>
+                <div class="stat-value" id="processingRate">0</div>
+                <div>lines per second</div>
+            </div>
+            
+            <div class="stat-card">
+                <h3>Token Efficiency</h3>
+                <div class="stat-value" id="tokenEfficiency">0</div>
+                <div>lines per token</div>
+            </div>
+        </div>
+        
+        <div class="charts-container">
+            <div class="chart-card">
+                <h3>Token Usage History</h3>
+                <canvas id="historyChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <h3>Current Usage</h3>
+                <div class="token-gauge">
+                    <canvas id="gaugeChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Predictive Analysis Section -->
+        <div class="prediction-section">
+            <div class="section-header">
+                <h2>Predictive Token Analysis</h2>
+                <div class="trend-status" id="predictionTrendStatus">Token usage trend: analyzing...</div>
+            </div>
+            
+            <div class="charts-container">
+                <div class="chart-card">
+                    <h3>Usage Forecast (7 Days)</h3>
+                    <canvas id="predictionChart"></canvas>
+                </div>
+                
+                <div class="prediction-metrics">
+                    <div class="prediction-card">
+                        <h3>Predicted Crossing Date</h3>
+                        <div class="prediction-value" id="crossingDateDisplay">N/A</div>
+                        <div class="prediction-label">Date when usage will reach 85% of budget</div>
+                    </div>
+                    <div class="prediction-card">
+                        <div class="days-remaining">
+                            <h3>Days Remaining</h3>
+                            <div class="prediction-value" id="daysRemainingDisplay">N/A</div>
+                            <div class="prediction-label">Until reaching threshold</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Predictive Alert Card -->
+            <div class="alert-card" id="predictiveAlertCard" style="display: none;">
+                <div class="alert-header">
+                    <div class="alert-title">
+                        <span class="alert-icon">🔮</span>
+                        <span id="predictiveAlertTitle">Predictive Alert</span>
+                    </div>
+                    <div class="alert-level info" id="predictiveAlertLevel">Info</div>
+                </div>
+                <div class="alert-message" id="predictiveAlertMessage">
+                    Predictive alert message will be displayed here.
+                </div>
+            </div>
+        </div>
+        
+        <div class="alerts-optimization">
+            <div class="alert-card" id="alertCard" style="display: none;">
+                <div class="alert-header">
+                    <div class="alert-title">
+                        <span class="alert-icon">!</span>
+                        <span id="alertTitle">Alert Title</span>
+                    </div>
+                    <div class="alert-level warning" id="alertLevel">Warning</div>
+                </div>
+                <div class="alert-message" id="alertMessage">
+                    Alert message will be displayed here.
+                </div>
+            </div>
+            
+            <div class="optimizations">
+                <h3>Optimization Suggestions</h3>
+                <ul class="optimization-list" id="optimizationList">
+                    <!-- Optimization items will be added here dynamically -->
+                </ul>
+            </div>
+        </div>
+        
+        <div class="recent-logs">
+            <h3>Recent Log Processing</h3>
+            <table class="log-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Log File</th>
+                        <th>Tokens</th>
+                        <th>Compression</th>
+                    </tr>
+                </thead>
+                <tbody id="logsTableBody">
+                    <!-- Log entries will be added here dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/js/token_monitor.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+[Unit]
+Description=CryptoBot Auth Service
+After=network.target postgresql.service redis.service
+Wants=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=cryptobot
+Group=cryptobot
+WorkingDirectory=/opt/cryptobot
+ExecStart=/usr/bin/python3 -m uvicorn auth.main:app --host 0.0.0.0 --port 8000 --workers 4
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cryptobot-auth
+Environment="PYTHONPATH=/opt/cryptobot"
+EnvironmentFile=/opt/cryptobot/.env
+
+# Security settings
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

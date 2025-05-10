@@ -1,0 +1,306 @@
+{
+  "query_optimizer": {
+    "enabled": true,
+    "slow_query_threshold": 0.5,
+    "optimization_rules": [
+      {
+        "name": "select_specific_columns",
+        "description": "Select specific columns instead of using SELECT *",
+        "pattern": "SELECT \\* FROM",
+        "suggestion": "Select only the columns you need",
+        "enabled": true
+      },
+      {
+        "name": "add_index",
+        "description": "Add an index to columns used in WHERE clauses",
+        "pattern": "WHERE\\s+(\\w+)\\s*=",
+        "suggestion": "Consider adding an index to the column used in the WHERE clause",
+        "enabled": true
+      },
+      {
+        "name": "limit_results",
+        "description": "Limit the number of results returned",
+        "pattern": "SELECT .* FROM .* (ORDER BY|GROUP BY)",
+        "suggestion": "Add a LIMIT clause to reduce the number of results",
+        "enabled": true
+      },
+      {
+        "name": "avoid_or_operator",
+        "description": "Avoid using OR operator in WHERE clauses",
+        "pattern": "WHERE .* OR .*",
+        "suggestion": "Consider using UNION or restructuring the query",
+        "enabled": true
+      },
+      {
+        "name": "use_joins_instead_of_subqueries",
+        "description": "Use JOINs instead of subqueries",
+        "pattern": "WHERE .* IN \\(SELECT",
+        "suggestion": "Use a JOIN instead of a subquery",
+        "enabled": true
+      }
+    ],
+    "auto_optimize": true,
+    "auto_index": true,
+    "index_creation_threshold": 5
+  },
+  "cache_manager": {
+    "enabled": true,
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "db": 0,
+      "password": null,
+      "ssl": false
+    },
+    "default_ttl": 300,
+    "cache_prefix": "cryptobot:",
+    "cache_groups": {
+      "market_data": {
+        "ttl": 60,
+        "enabled": true
+      },
+      "exchange_info": {
+        "ttl": 3600,
+        "enabled": true
+      },
+      "user_data": {
+        "ttl": 300,
+        "enabled": true
+      },
+      "strategy_data": {
+        "ttl": 120,
+        "enabled": true
+      }
+    },
+    "memory_cache_fallback": true,
+    "memory_cache_max_size": 1000
+  },
+  "rate_limiter": {
+    "enabled": true,
+    "exchange_limits": {
+      "binance": {
+        "requests_per_second": 10.0,
+        "burst_size": 20,
+        "adaptive": true
+      },
+      "kraken": {
+        "requests_per_second": 1.0,
+        "burst_size": 5,
+        "adaptive": true
+      },
+      "coinbase": {
+        "requests_per_second": 3.0,
+        "burst_size": 10,
+        "adaptive": true
+      }
+    },
+    "api_limits": {
+      "default": {
+        "requests_per_second": 5.0,
+        "burst_size": 10,
+        "adaptive": false
+      },
+      "auth": {
+        "requests_per_second": 10.0,
+        "burst_size": 20,
+        "adaptive": false
+      },
+      "data": {
+        "requests_per_second": 20.0,
+        "burst_size": 30,
+        "adaptive": false
+      }
+    },
+    "wait_on_limit": true
+  },
+  "memory_optimizer": {
+    "enabled": true,
+    "monitoring": {
+      "enabled": true,
+      "interval": 60,
+      "warning_threshold": 0.8,
+      "critical_threshold": 0.9
+    },
+    "tracemalloc": {
+      "enabled": true,
+      "nframes": 25
+    },
+    "gc": {
+      "auto_collect": true,
+      "threshold": 10000
+    },
+    "leak_detection": {
+      "enabled": true,
+      "snapshot_interval": 3600,
+      "max_snapshots": 5
+    }
+  },
+  "performance_monitor": {
+    "enabled": true,
+    "monitoring": {
+      "enabled": true,
+      "interval": 60
+    },
+    "thresholds": {
+      "warning": 1.0,
+      "critical": 5.0
+    },
+    "tracking": {
+      "functions": true,
+      "endpoints": true,
+      "database": true,
+      "exchange": true,
+      "system": true
+    },
+    "reporting": {
+      "enabled": true,
+      "interval": 3600,
+      "file_path": "reports/performance_report_{timestamp}.json",
+      "max_reports": 24
+    }
+  },
+  "optimization_profiles": {
+    "development": {
+      "query_optimizer": {
+        "enabled": true,
+        "auto_optimize": false,
+        "auto_index": false
+      },
+      "cache_manager": {
+        "enabled": true,
+        "default_ttl": 60
+      },
+      "rate_limiter": {
+        "enabled": false
+      },
+      "memory_optimizer": {
+        "enabled": true,
+        "monitoring": {
+          "interval": 300
+        }
+      },
+      "performance_monitor": {
+        "enabled": true,
+        "reporting": {
+          "interval": 1800
+        }
+      }
+    },
+    "testing": {
+      "query_optimizer": {
+        "enabled": true,
+        "auto_optimize": true,
+        "auto_index": false
+      },
+      "cache_manager": {
+        "enabled": true,
+        "default_ttl": 60
+      },
+      "rate_limiter": {
+        "enabled": true
+      },
+      "memory_optimizer": {
+        "enabled": true,
+        "monitoring": {
+          "interval": 60
+        }
+      },
+      "performance_monitor": {
+        "enabled": true,
+        "reporting": {
+          "interval": 600
+        }
+      }
+    },
+    "production": {
+      "query_optimizer": {
+        "enabled": true,
+        "auto_optimize": true,
+        "auto_index": true
+      },
+      "cache_manager": {
+        "enabled": true,
+        "default_ttl": 300
+      },
+      "rate_limiter": {
+        "enabled": true
+      },
+      "memory_optimizer": {
+        "enabled": true,
+        "monitoring": {
+          "interval": 60
+        }
+      },
+      "performance_monitor": {
+        "enabled": true,
+        "reporting": {
+          "interval": 3600
+        }
+      }
+    },
+    "high_performance": {
+      "query_optimizer": {
+        "enabled": true,
+        "auto_optimize": true,
+        "auto_index": true,
+        "slow_query_threshold": 0.1
+      },
+      "cache_manager": {
+        "enabled": true,
+        "default_ttl": 600
+      },
+      "rate_limiter": {
+        "enabled": true,
+        "wait_on_limit": true
+      },
+      "memory_optimizer": {
+        "enabled": true,
+        "monitoring": {
+          "interval": 30,
+          "warning_threshold": 0.7,
+          "critical_threshold": 0.8
+        }
+      },
+      "performance_monitor": {
+        "enabled": true,
+        "thresholds": {
+          "warning": 0.5,
+          "critical": 2.0
+        }
+      }
+    },
+    "low_resource": {
+      "query_optimizer": {
+        "enabled": true,
+        "auto_optimize": true,
+        "auto_index": false
+      },
+      "cache_manager": {
+        "enabled": true,
+        "default_ttl": 600,
+        "memory_cache_max_size": 500
+      },
+      "rate_limiter": {
+        "enabled": true,
+        "wait_on_limit": true
+      },
+      "memory_optimizer": {
+        "enabled": true,
+        "monitoring": {
+          "interval": 120,
+          "warning_threshold": 0.6,
+          "critical_threshold": 0.7
+        },
+        "tracemalloc": {
+          "enabled": false
+        }
+      },
+      "performance_monitor": {
+        "enabled": true,
+        "monitoring": {
+          "interval": 300
+        }
+      }
+    }
+  }
+}

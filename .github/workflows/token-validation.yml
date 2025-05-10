@@ -1,0 +1,55 @@
+name: Token Validation
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  validate-tokens:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for modified file detection
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Get changed files
+      id: changed-files
+      run: |
+        if [ "${{ github.event_name }}" == "pull_request" ]; then
+          echo "CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -v '^\.github/' | xargs)" >> $GITHUB_ENV
+        else
+          echo "CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.event.after }} | grep -v '^\.github/' | xargs)" >> $GITHUB_ENV
+        fi
+        
+    - name: Validate token limits
+      run: |
+        python scripts/validate_tokens.py --files "${{ env.CHANGED_FILES }}" --token-budget 76659 --report-json token_report.json
+      
+    - name: Upload token report
+      uses: actions/upload-artifact@v3
+      with:
+        name: token-validation-report
+        path: token_report.json
+        
+    - name: Generate badge
+      run: |
+        python scripts/generate_token_badge.py --report token_report.json
+        
+    - name: Upload badge
+      uses: actions/upload-artifact@v3
+      with:
+        name: token-efficiency-badge
+        path: token_efficiency_badge.svg

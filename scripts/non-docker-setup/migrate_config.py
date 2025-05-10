@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""
+Cryptobot Configuration Migration Utility
+
+This script extracts configurations from Docker Compose and Dockerfiles
+and adapts them for non-Docker use.
+"""
+
+import os
+import re
+import sys
+import yaml
+import argparse
+import logging
+from pathlib import Path
+from typing import Dict, Any, List, Optional
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("config_migration.log")
+    ]
+)
+logger = logging.getLogger("config_migration")
+
+class DockerConfigExtractor:
+    """Extract configuration from Docker files"""
+    
+    def __init__(self, project_root: Path):
+        self.project_root = project_root
+        self.services = ["auth", "strategy", "trade", "backtest", "data"]
+        self.docker_compose_path = project_root / "docker-compose.yml"
+    
+    def extract_from_dockerfile(self, service: str) -> Dict[str, Any]:
+        """Extract configuration from a Dockerfile"""
+        dockerfile_path = self.project_root / service / "Dockerfile"
+        if not dockerfile_path.exists():
+            logger.warning(f"Dockerfile not found for {service} service")
+            return {}
+        
+        config = {}
+        env_vars = []
+        
+        with open(dockerfile_path, "r") as f:
+            content = f.read()
+            
+            # Extract ENV statements
+            env_pattern = r"ENV\s+([A-Za-z0-9_]+)(?:=|\s+)([^\n]+)"
+            env_matches = re.finditer(env_pattern, content)
+            
+            for match in env_matches:
+                key = match.group(1)
+                value = match.group(2).strip()
+                
+                # Handle variable substitution
+                if value.startswith("${") and value.endswith("}"):
+                    var_name = value[2:-1]
+                    env_vars.append(var_name)
+                else:
+                    config[key] = value
+            
+            # Extract exposed ports
+            port_pattern = r"EXPOSE\s+(\d+)"
+            port_match = re.search(port_pattern, content)
+            if port_match:
+                config["PORT"] = port_match.group(1)
+        
+        return {
+            "config": config,
+            "env_vars": env_vars
+        }
+    
+    def extract_from_docker_compose(self) -> Dict[str, Any]:
+        """Extract configuration from docker-compose.yml"""
+        if not self.docker_compose_path.exists():
+            logger.warning("docker-compose.yml not found")
+            return {}
+        
+        try:
+            with open(self.docker_compose_path, "r") as f:
+                compose_data = yaml.safe_load(f)
+                
+            if not compose_data or "services" not in compose_data:
+                logger.warning("Invalid docker-compose.yml format")
+                return {}
+            
+            result = {}
+            services = compose_data.get("services", {})
+            
+            for service_name, service_config in services.items():
+                if service_name not in self.services:
+                    continue
+                
+                service_result = {
+                    "environment": service_config.get("environment", {}),
+                    "ports": service_config.get("ports", []),
+                    "depends_on": service_config.get("depends_on", []),
+                    "volumes": service_config.get("volumes", [])
+                }
+                
+                result[service_name] = service_result
+            
+            return result
+                
+        except Exception as e:
+            logger.error(f"Error parsing docker-compose.yml: {str(e)}")
+            return {}
+    
+    def extract_all_configs(self) -> Dict[str, Any]:
+        """Extract configurations from all Docker files"""
+        result = {
+            "services": {},
+            "docker_compose": self.extract_from_docker_compose()
+        }
+        
+        for service in self.services:
+            result["services"][service] = self.extract_from_dockerfile(service)
+        
+        return result
+
+class ConfigMigrator:
+    """Migrate Docker configurations to non-Docker configurations"""
+    
+    def __init__(self, project_root: Path, config_data: Dict[str, Any]):
+        self.project_root = project_root
+        self.config_data = config_data
+        self.output_dir = project_root / "config" / "non-docker"
+    
+    def _ensure_output_dirs(self):
+        """Ensure output directories exist"""
+        for service in self.config_data["services"]:
+            service_dir = self.output_dir / service
+            service_dir.mkdir(parents=True, exist_ok=True)
+    
+    def _generate_env_file(self, service: str, env_vars: Dict[str, str]) -> str:
+        """Generate content for .env file"""
+        content = "# Environment variables for {0} service\n".format(service)
+        content += "# Generated by migrate_config.py\n\n"
+        
+        for key, value in env_vars.items():
+            content += "{0}={1}\n".format(key, value)
+        
+        return content
+    
+    def _generate_yaml_config(self, service: str, config: Dict[str, Any]) -> str:
+        """Generate YAML configuration file content"""
+        # Define service-specific configuration templates
+        templates = {
+            "auth": {
+                "server": {
+                    "host": "0.0.0.0",
+                    "port": config.get("PORT", "8000")
+                },
+                "database": {
+                    "url": "postgresql://postgres:postgres@localhost:5432/cryptobot_auth"
+                },
+                "security": {
+                    "secret_key": config.get("SECRET_KEY", "CHANGE_THIS_TO_A_SECURE_SECRET_KEY")
+                }
+            },
+            "strategy": {
+                "server": {
+                    "host": "0.0.0.0",
+                    "port": config.get("PORT", "8000")
+                },
+                "database": {
+                    "url": "postgresql://postgres:postgres@localhost:5432/cryptobot_strategy"
+                },
+                "auth": {
+                    "service_url": "http://localhost:8000"
+                }
+            },
+            "trade": {
+                "server": {
+                    "host": "0.0.0.0",
+                    "port": config.get("PORT", "8000")
+                },
+                "database": {
+                    "url": "postgresql://postgres:postgres@localhost:5432/cryptobot_trade"
+                },
+                "exchange": {
+                    "api_key": config.get("EXCHANGE_API_KEY", "YOUR_EXCHANGE_API_KEY"),
+                    "api_secret": config.get("EXCHANGE_API_SECRET", "YOUR_EXCHANGE_API_SECRET"),
+                    "passphrase": config.get("EXCHANGE_PASSPHRASE", ""),
+                    "sandbox": config.get("EXCHANGE_SANDBOX", "true")
+                }
+            },
+            "backtest": {
+                "server": {
+                    "host": "0.0.0.0",
+                    "port": config.get("PORT", "8000")
+                },
+                "app": {
+                    "name": "Backtest Service",
+                    "max_concurrent_backtests": "5"
+                },
+                "database": {
+                    "url": "sqlite:///./backtest.db"
+                }
+            },
+            "data": {
+                "server": {
+                    "host": "0.0.0.0",
+                    "port": config.get("PORT", "8001")
+                },
+                "data_source": {
+                    "cache_ttl": "300",
+                    "exchanges": ["binance", "kraken", "coinbase"]
+                },
+                "redis": {
+                    "host": "localhost",
+                    "port": "6379"
+                }
+            }
+        }
+        
+        # Get template for this service
+        template = templates.get(service, {})
+        
+        # Convert to YAML
+        return yaml.dump(template, default_flow_style=False)
+    
+    def migrate_configs(self):
+        """Migrate configurations from Docker to non-Docker"""
+        self._ensure_output_dirs()
+        
+        for service, service_data in self.config_data["services"].items():
+            logger.info(f"Migrating configuration for {service} service")
+            
+            # Extract configuration
+            config = service_data.get("config", {})
+            env_vars = service_data.get("env_vars", [])
+            
+            # Generate .env file
+            env_content = self._generate_env_file(service, config)
+            env_path = self.project_root / service / ".env"
+            
+            # Generate YAML config
+            yaml_content = self._generate_yaml_config(service, config)
+            yaml_path = self.output_dir / service / "config.yaml"
+            
+            # Write files
+            with open(env_path, "w") as f:
+                f.write(env_content)
+            
+            with open(yaml_path, "w") as f:
+                f.write(yaml_content)
+            
+            logger.info(f"Generated configuration files for {service} service")
+        
+        logger.info("Configuration migration completed successfully")
+
+def main():
+    """Main function"""
+    parser = argparse.ArgumentParser(description="Cryptobot Configuration Migration Utility")
+    parser.add_argument("--project-root", type=str, default=".", help="Path to project root directory")
+    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for configuration files")
+    args = parser.parse_args()
+    
+    project_root = Path(args.project_root).absolute()
+    
+    if not project_root.exists():
+        logger.error(f"Project root directory not found: {project_root}")
+        sys.exit(1)
+    
+    logger.info(f"Starting configuration migration from {project_root}")
+    
+    # Extract configurations from Docker files
+    extractor = DockerConfigExtractor(project_root)
+    config_data = extractor.extract_all_configs()
+    
+    # Migrate configurations
+    migrator = ConfigMigrator(project_root, config_data)
+    migrator.migrate_configs()
+    
+    logger.info("Configuration migration completed successfully")
+
+if __name__ == "__main__":
+    main()

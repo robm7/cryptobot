@@ -1,0 +1,14 @@
+# Core dependencies
+fastapi==0.95.2
+uvicorn==0.22.0
+slowapi==0.1.7
+python-multipart==0.0.6
+
+# Database
+sqlalchemy==2.0.6
+
+# Exchange connectivity
+ccxt==3.0.74
+
+# Environment management
+python-dotenv==1.0.0

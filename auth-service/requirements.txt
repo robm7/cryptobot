@@ -1,0 +1,18 @@
+grpcio==1.62.0
+grpcio-tools==1.62.0
+redis==5.0.1
+python-dotenv==1.0.0
+schedule==1.2.0
+python-json-logger==2.0.7
+
+# Testing
+pytest==8.0.0
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-asyncio==0.23.5
+pytest-benchmark==4.0.0
+locust==2.20.0
+
+# Security
+bandit==1.7.5
+safety==2.3.5

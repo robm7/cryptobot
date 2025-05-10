@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cryptobot-prod
+  labels:
+    name: cryptobot-prod
+    environment: production
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cryptobot-resource-quota
+  namespace: cryptobot-prod
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: cryptobot-prod
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress

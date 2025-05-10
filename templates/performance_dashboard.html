@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cryptobot Performance Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            font-weight: bold;
+        }
+        .metric-card {
+            text-align: center;
+            padding: 15px;
+        }
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .metric-label {
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .progress {
+            height: 10px;
+            margin-top: 5px;
+        }
+        .table-responsive {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .chart-container {
+            height: 300px;
+        }
+        .warning {
+            color: #ffc107;
+        }
+        .danger {
+            color: #dc3545;
+        }
+        .success {
+            color: #28a745;
+        }
+        .info {
+            color: #17a2b8;
+        }
+        .nav-tabs .nav-link.active {
+            font-weight: bold;
+        }
+        .config-section {
+            margin-bottom: 20px;
+        }
+        .config-section h5 {
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-speedometer2"></i> Cryptobot Performance
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="dashboard-link">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="config-link">Configuration</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="reports-link">Reports</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="refresh-btn">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Dashboard View -->
+        <div id="dashboard-view">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <i class="bi bi-speedometer"></i> Performance Overview
+                            <span class="float-end" id="last-updated"></span>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="avg-response-time">0 ms</div>
+                                        <div class="metric-label">Average Response Time</div>
+                                        <div class="progress">
+                                            <div class="progress-bar" id="avg-response-time-bar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="cache-hit-rate">0%</div>
+                                        <div class="metric-label">Cache Hit Rate</div>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-success" id="cache-hit-rate-bar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="memory-usage">0 MB</div>
+                                        <div class="metric-label">Memory Usage</div>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-info" id="memory-usage-bar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="cpu-usage">0%</div>
+                                        <div class="metric-label">CPU Usage</div>
+                                        <div class="progress">
+                                            <div class="progress-bar bg-warning" id="cpu-usage-bar" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+<div class="row">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-danger text-white">
+                            <i class="bi bi-exclamation-triangle"></i> Performance Bottlenecks
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover" id="bottlenecks-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Name</th>
+                                            <th>Avg Time</th>
+                                            <th>Count</th>
+                                            <th>Severity</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Bottlenecks will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <i class="bi bi-database"></i> Database Performance
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="dbTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="slow-queries-tab" data-bs-toggle="tab" data-bs-target="#slow-queries" type="button" role="tab">Slow Queries</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="query-stats-tab" data-bs-toggle="tab" data-bs-target="#query-stats" type="button" role="tab">Query Stats</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content" id="dbTabsContent">
+                                <div class="tab-pane fade show active" id="slow-queries" role="tabpanel">
+                                    <div class="table-responsive mt-3">
+                                        <table class="table table-striped table-hover" id="slow-queries-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Query</th>
+                                                    <th>Avg Time</th>
+                                                    <th>Count</th>
+                                                    <th>Max Time</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Slow queries will be populated here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="query-stats" role="tabpanel">
+                                    <div class="chart-container mt-3">
+                                        <canvas id="query-stats-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <i class="bi bi-graph-up"></i> System Performance
+                        </div>
+                        <div class="card-body">
+                            <ul class="nav nav-tabs" id="sysTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="cpu-tab" data-bs-toggle="tab" data-bs-target="#cpu" type="button" role="tab">CPU</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="memory-tab" data-bs-toggle="tab" data-bs-target="#memory" type="button" role="tab">Memory</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="disk-tab" data-bs-toggle="tab" data-bs-target="#disk" type="button" role="tab">Disk</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="network-tab" data-bs-toggle="tab" data-bs-target="#network" type="button" role="tab">Network</button>
+                                </li>
+                            </ul>
+                            <div class="tab-content" id="sysTabsContent">
+                                <div class="tab-pane fade show active" id="cpu" role="tabpanel">
+                                    <div class="chart-container mt-3">
+                                        <canvas id="cpu-chart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="memory" role="tabpanel">
+                                    <div class="chart-container mt-3">
+                                        <canvas id="memory-chart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="disk" role="tabpanel">
+                                    <div class="chart-container mt-3">
+                                        <canvas id="disk-chart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="network" role="tabpanel">
+                                    <div class="chart-container mt-3">
+                                        <canvas id="network-chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header bg-warning text-dark">
+                            <i class="bi bi-hdd-stack"></i> Cache Performance
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="cache-hits">0</div>
+                                        <div class="metric-label">Cache Hits</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="metric-card">
+                                        <div class="metric-value" id="cache-misses">0</div>
+                                        <div class="metric-label">Cache Misses</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="chart-container mt-3">
+                                <canvas id="cache-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+    </div>
+<!-- Configuration View -->
+        <div id="config-view" style="display: none;">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-gear"></i> Performance Optimization Configuration
+                </div>
+                <div class="card-body">
+                    <form id="config-form">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group mb-3">
+                                    <label for="profile-select" class="form-label">Optimization Profile</label>
+                                    <select class="form-select" id="profile-select">
+                                        <option value="development">Development</option>
+                                        <option value="testing">Testing</option>
+                                        <option value="production">Production</option>
+                                        <option value="high_performance">High Performance</option>
+                                        <option value="low_resource">Low Resource</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-primary" id="apply-profile-btn">Apply Profile</button>
+                            </div>
+                            <div class="col-md-9">
+                                <ul class="nav nav-tabs" id="configTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="query-optimizer-tab" data-bs-toggle="tab" data-bs-target="#query-optimizer" type="button" role="tab">Query Optimizer</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="cache-manager-tab" data-bs-toggle="tab" data-bs-target="#cache-manager" type="button" role="tab">Cache Manager</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="rate-limiter-tab" data-bs-toggle="tab" data-bs-target="#rate-limiter" type="button" role="tab">Rate Limiter</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="memory-optimizer-tab" data-bs-toggle="tab" data-bs-target="#memory-optimizer" type="button" role="tab">Memory Optimizer</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="performance-monitor-tab" data-bs-toggle="tab" data-bs-target="#performance-monitor" type="button" role="tab">Performance Monitor</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content" id="configTabsContent">
+                                    <!-- Query Optimizer Config -->
+                                    <div class="tab-pane fade show active" id="query-optimizer" role="tabpanel">
+                                        <div class="config-section mt-3">
+                                            <h5>Query Optimizer Settings</h5>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="query-optimizer-enabled" checked>
+                                                        <label class="form-check-label" for="query-optimizer-enabled">Enable Query Optimizer</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="auto-optimize" checked>
+                                                        <label class="form-check-label" for="auto-optimize">Auto-Optimize Queries</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="auto-index" checked>
+                                                        <label class="form-check-label" for="auto-index">Auto-Create Indexes</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="slow-query-threshold" class="form-label">Slow Query Threshold (seconds)</label>
+                                                        <input type="number" class="form-control" id="slow-query-threshold" min="0.1" step="0.1" value="0.5">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="index-creation-threshold" class="form-label">Index Creation Threshold</label>
+                                                        <input type="number" class="form-control" id="index-creation-threshold" min="1" step="1" value="5">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Cache Manager Config -->
+                                    <div class="tab-pane fade" id="cache-manager" role="tabpanel">
+                                        <div class="config-section mt-3">
+                                            <h5>Cache Manager Settings</h5>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="cache-manager-enabled" checked>
+                                                        <label class="form-check-label" for="cache-manager-enabled">Enable Cache Manager</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="memory-cache-fallback" checked>
+                                                        <label class="form-check-label" for="memory-cache-fallback">Memory Cache Fallback</label>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="default-ttl" class="form-label">Default TTL (seconds)</label>
+                                                        <input type="number" class="form-control" id="default-ttl" min="1" step="1" value="300">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="cache-prefix" class="form-label">Cache Prefix</label>
+                                                        <input type="text" class="form-control" id="cache-prefix" value="cryptobot:">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="memory-cache-max-size" class="form-label">Memory Cache Max Size</label>
+                                                        <input type="number" class="form-control" id="memory-cache-max-size" min="100" step="100" value="1000">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Rate Limiter Config -->
+                                    <div class="tab-pane fade" id="rate-limiter" role="tabpanel">
+                                        <div class="config-section mt-3">
+                                            <h5>Rate Limiter Settings</h5>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="rate-limiter-enabled" checked>
+                                                        <label class="form-check-label" for="rate-limiter-enabled">Enable Rate Limiter</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="wait-on-limit" checked>
+                                                        <label class="form-check-label" for="wait-on-limit">Wait On Limit</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Memory Optimizer Config -->
+                                    <div class="tab-pane fade" id="memory-optimizer" role="tabpanel">
+                                        <div class="config-section mt-3">
+                                            <h5>Memory Optimizer Settings</h5>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="memory-optimizer-enabled" checked>
+                                                        <label class="form-check-label" for="memory-optimizer-enabled">Enable Memory Optimizer</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="monitoring-enabled" checked>
+                                                        <label class="form-check-label" for="monitoring-enabled">Enable Memory Monitoring</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="tracemalloc-enabled" checked>
+                                                        <label class="form-check-label" for="tracemalloc-enabled">Enable Tracemalloc</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="monitoring-interval" class="form-label">Monitoring Interval (seconds)</label>
+                                                        <input type="number" class="form-control" id="monitoring-interval" min="1" step="1" value="60">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="warning-threshold" class="form-label">Warning Threshold</label>
+                                                        <input type="number" class="form-control" id="warning-threshold" min="0.1" max="1.0" step="0.1" value="0.8">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="critical-threshold" class="form-label">Critical Threshold</label>
+                                                        <input type="number" class="form-control" id="critical-threshold" min="0.1" max="1.0" step="0.1" value="0.9">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Performance Monitor Config -->
+                                    <div class="tab-pane fade" id="performance-monitor" role="tabpanel">
+                                        <div class="config-section mt-3">
+                                            <h5>Performance Monitor Settings</h5>
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="performance-monitor-enabled" checked>
+                                                        <label class="form-check-label" for="performance-monitor-enabled">Enable Performance Monitor</label>
+                                                    </div>
+                                                    <div class="form-check form-switch mb-3">
+                                                        <input class="form-check-input" type="checkbox" id="perf-monitoring-enabled" checked>
+                                                        <label class="form-check-label" for="perf-monitoring-enabled">Enable Performance Monitoring</label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-3">
+                                                        <label for="perf-monitoring-interval" class="form-label">Monitoring Interval (seconds)</label>
+                                                        <input type="number" class="form-control" id="perf-monitoring-interval" min="1" step="1" value="60">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="perf-warning-threshold" class="form-label">Warning Threshold (seconds)</label>
+                                                        <input type="number" class="form-control" id="perf-warning-threshold" min="0.1" step="0.1" value="1.0">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="perf-critical-threshold" class="form-label">Critical Threshold (seconds)</label>
+                                                        <input type="number" class="form-control" id="perf-critical-threshold" min="0.1" step="0.1" value="5.0">
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-4">
+                            <div class="col-md-12">
+                                <button type="button" class="btn btn-primary" id="save-config-btn">Save Configuration</button>
+                                <button type="button" class="btn btn-secondary" id="reset-config-btn">Reset</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="/static/js/performance_dashboard.js"></script>
+</body>
+</html>

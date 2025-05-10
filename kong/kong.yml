@@ -1,0 +1,102 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: auth-service-rest
+    url: http://auth-service:8000
+    routes:
+      - name: auth-rest-route
+        paths: ["/auth"]
+        methods: ["POST", "GET"]
+        strip_path: true
+        plugins:
+          - name: jwt
+            enabled: true
+            config:
+              cookie_names: ["auth_token"]
+              header_names: ["Authorization"]
+          - name: rate-limiting
+            config:
+              minute: 30
+              policy: redis
+              redis_host: redis
+              redis_port: 6379
+
+  - name: auth-service-grpc
+    url: grpc://auth-service:50051
+    routes:
+      - name: auth-grpc-route
+        protocols: ["grpc"]
+        paths: ["/auth.AuthService"]
+        plugins:
+          - name: jwt
+            enabled: true
+            config:
+              header_names: ["Authorization"]
+          - name: rate-limiting
+            config:
+              minute: 60
+              policy: redis
+              redis_host: redis
+              redis_port: 6379
+
+  - name: data-service
+    url: http://data-service:8001
+    routes:
+      - name: data-route
+        paths: ["/data"]
+        methods: ["GET", "POST"]
+        strip_path: true
+
+  - name: strategy-service
+    url: http://strategy-service:8002
+    routes:
+      - name: strategy-route
+        paths: ["/strategies"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        strip_path: true
+
+  - name: backtest-service
+    url: http://backtest-service:8003
+    routes:
+      - name: backtest-route
+        paths: ["/backtests"]
+        methods: ["GET", "POST"]
+        strip_path: true
+
+  - name: trade-service
+    url: http://trade-service:8004
+    routes:
+      - name: trade-route
+        paths: ["/trades"]
+        methods: ["GET", "POST"]
+        strip_path: true
+
+  - name: dashboard-service
+    url: http://dashboard-service:3000
+    routes:
+      - name: dashboard-route
+        paths: ["/"]
+        methods: ["GET"]
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 60
+      hour: 1000
+      policy: redis
+      redis_host: redis
+      redis_port: 6379
+      redis_timeout: 2000
+      fault_tolerant: true
+      hide_client_headers: false
+  - name: jwt
+    config:
+      secret_is_base64: false
+      key_claim_name: "sub"
+      claims_to_verify: ["exp", "nbf"]
+      uri_param_names: ["jwt", "token"]
+      cookie_names: ["auth_token"]
+      header_names: ["Authorization"]
+      anonymous: "anonymous"
+      run_on_preflight: true

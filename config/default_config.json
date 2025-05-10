@@ -1,0 +1,167 @@
+{
+  "services": {
+    "auth": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8000,
+      "workers": 1,
+      "log_level": "info",
+      "session_expiry": 86400,
+      "token_expiry": 3600,
+      "refresh_token_expiry": 604800
+    },
+    "strategy": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8001,
+      "workers": 1,
+      "log_level": "info",
+      "max_strategies": 10,
+      "strategy_check_interval": 60
+    },
+    "data": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8002,
+      "workers": 1,
+      "log_level": "info",
+      "cache_expiry": 300,
+      "max_historical_days": 365,
+      "update_interval": 60
+    },
+    "trade": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8003,
+      "workers": 1,
+      "log_level": "info",
+      "max_concurrent_trades": 10,
+      "position_check_interval": 60
+    },
+    "backtest": {
+      "enabled": true,
+      "host": "0.0.0.0",
+      "port": 8004,
+      "workers": 1,
+      "log_level": "info",
+      "max_concurrent_backtests": 2,
+      "max_backtest_days": 365
+    }
+  },
+  "dashboard": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 8080,
+    "workers": 1,
+    "log_level": "info",
+    "refresh_interval": 5
+  },
+  "database": {
+    "url": "sqlite:///cryptobot.db",
+    "pool_size": 5,
+    "max_overflow": 10,
+    "pool_timeout": 30,
+    "pool_recycle": 1800
+  },
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "db": 0,
+    "password": null,
+    "socket_timeout": 5,
+    "socket_connect_timeout": 5,
+    "retry_on_timeout": true
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "cryptobot.log",
+    "max_size": 10485760,
+    "backup_count": 5,
+    "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  },
+  "security": {
+    "api_key_rotation_days": 90,
+    "api_key_grace_period_hours": 24,
+    "password_min_length": 12,
+    "password_complexity": true,
+    "mfa_enabled": false,
+    "rate_limit_per_minute": 60
+  },
+  "exchanges": {
+    "binance": {
+      "enabled": true,
+      "testnet": true,
+      "timeout": 10,
+      "rate_limit": {
+        "max_requests_per_second": 5,
+        "max_requests_per_minute": 300
+      }
+    },
+    "kraken": {
+      "enabled": false,
+      "timeout": 10,
+      "rate_limit": {
+        "max_requests_per_second": 1,
+        "max_requests_per_minute": 60
+      }
+    },
+    "coinbase": {
+      "enabled": false,
+      "timeout": 10,
+      "rate_limit": {
+        "max_requests_per_second": 3,
+        "max_requests_per_minute": 180
+      }
+    }
+  },
+  "order_execution": {
+    "retry": {
+      "max_retries": 3,
+      "backoff_base": 2.0,
+      "initial_delay": 1.0,
+      "max_delay": 30.0,
+      "retryable_errors": ["timeout", "rate_limit", "maintenance"]
+    },
+    "circuit_breaker": {
+      "error_threshold": 30,
+      "warning_threshold": 10,
+      "window_size_minutes": 5,
+      "cool_down_seconds": 60
+    }
+  },
+  "risk_management": {
+    "max_position_size_percent": 5.0,
+    "max_daily_drawdown_percent": 3.0,
+    "max_total_drawdown_percent": 15.0,
+    "stop_loss_percent": 2.0,
+    "take_profit_percent": 5.0,
+    "max_open_trades": 5,
+    "max_daily_trades": 20
+  },
+  "notifications": {
+    "email": {
+      "enabled": false,
+      "smtp_server": "smtp.example.com",
+      "smtp_port": 587,
+      "smtp_user": "",
+      "smtp_password": "",
+      "from_address": "cryptobot@example.com",
+      "to_address": ""
+    },
+    "telegram": {
+      "enabled": false,
+      "bot_token": "",
+      "chat_id": ""
+    },
+    "events": {
+      "trade_executed": true,
+      "trade_closed": true,
+      "stop_loss_triggered": true,
+      "take_profit_triggered": true,
+      "error": true,
+      "api_key_expiring": true,
+      "api_key_rotated": true,
+      "circuit_breaker_tripped": true
+    }
+  }
+}

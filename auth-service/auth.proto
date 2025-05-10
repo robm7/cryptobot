@@ -1,0 +1,186 @@
+syntax = "proto3";
+
+package auth;
+
+service KeyManagementService {
+    // Gets the current active API key
+    rpc GetCurrentKey (GetKeyRequest) returns (KeyResponse) {}
+
+    // Rotates the current API key with a new one
+    rpc RotateKey (RotateKeyRequest) returns (KeyResponse) {}
+
+    // Lists all API keys
+    rpc ListKeys (ListKeysRequest) returns (ListKeysResponse) {}
+
+    // Gets keys that will expire within specified days
+    rpc GetExpiringKeys (GetExpiringKeysRequest) returns (ListKeysResponse) {}
+
+    // Revokes a specific API key
+    rpc RevokeKey (RevokeKeyRequest) returns (RevokeKeyResponse) {}
+}
+
+message GetKeyRequest {}
+
+message RotateKeyRequest {
+    int32 expire_in_days = 1;
+}
+
+message ListKeysRequest {}
+
+message GetExpiringKeysRequest {
+    int32 days = 1;
+}
+
+message RevokeKeyRequest {
+    string key_id = 1;
+}
+
+message KeyResponse {
+    string key_id = 1;
+    string created_at = 2;
+    string expires_at = 3;
+    bool is_active = 4;
+    bool is_revoked = 5;
+    int32 version = 6;
+    repeated string permissions = 7;
+}
+
+message ListKeysResponse {
+    repeated KeyResponse keys = 1;
+}
+
+message RevokeKeyResponse {
+    bool success = 1;
+}
+
+// User Management Service
+service UserManagementService {
+    // User operations
+    rpc CreateUser (CreateUserRequest) returns (UserResponse) {}
+    rpc GetUser (GetUserRequest) returns (UserResponse) {}
+    rpc UpdateUser (UpdateUserRequest) returns (UserResponse) {}
+    rpc DeleteUser (DeleteUserRequest) returns (DeleteUserResponse) {}
+    rpc ListUsers (ListUsersRequest) returns (ListUsersResponse) {}
+    rpc SearchUsers (SearchUsersRequest) returns (ListUsersResponse) {}
+
+    // Role operations
+    rpc CreateRole (CreateRoleRequest) returns (RoleResponse) {}
+    rpc AssignRole (AssignRoleRequest) returns (AssignRoleResponse) {}
+    rpc RevokeRole (RevokeRoleRequest) returns (RevokeRoleResponse) {}
+    rpc ListRoles (ListRolesRequest) returns (ListRolesResponse) {}
+
+    // Activity logging
+    rpc GetUserActivity (GetUserActivityRequest) returns (UserActivityResponse) {}
+}
+
+// User messages
+message CreateUserRequest {
+    string username = 1;
+    string email = 2;
+    string password = 3;
+    repeated string initial_roles = 4;
+}
+
+message GetUserRequest {
+    string user_id = 1;
+}
+
+message UpdateUserRequest {
+    string user_id = 1;
+    optional string username = 2;
+    optional string email = 3;
+    optional string password = 4;
+    optional bool is_active = 5;
+}
+
+message DeleteUserRequest {
+    string user_id = 1;
+}
+
+message DeleteUserResponse {
+    bool success = 1;
+}
+
+message ListUsersRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+}
+
+message SearchUsersRequest {
+    string query = 1;
+    int32 page = 2;
+    int32 page_size = 3;
+}
+
+message UserResponse {
+    string user_id = 1;
+    string username = 2;
+    string email = 3;
+    bool is_active = 4;
+    string created_at = 5;
+    string updated_at = 6;
+    repeated string roles = 7;
+}
+
+message ListUsersResponse {
+    repeated UserResponse users = 1;
+    int32 total_count = 2;
+}
+
+// Role messages
+message CreateRoleRequest {
+    string name = 1;
+    repeated string permissions = 2;
+}
+
+message AssignRoleRequest {
+    string user_id = 1;
+    string role_name = 2;
+}
+
+message AssignRoleResponse {
+    bool success = 1;
+}
+
+message RevokeRoleRequest {
+    string user_id = 1;
+    string role_name = 2;
+}
+
+message RevokeRoleResponse {
+    bool success = 1;
+}
+
+message ListRolesRequest {}
+
+message RoleResponse {
+    string name = 1;
+    repeated string permissions = 2;
+    string created_at = 3;
+}
+
+message ListRolesResponse {
+    repeated RoleResponse roles = 1;
+}
+
+// Activity messages
+message GetUserActivityRequest {
+    string user_id = 1;
+    optional string start_date = 2;
+    optional string end_date = 3;
+    int32 page = 4;
+    int32 page_size = 5;
+}
+
+message ActivityEntry {
+    string action = 1;
+    string timestamp = 2;
+    string ip_address = 3;
+    string user_agent = 4;
+    map<string, string> metadata = 5;
+}
+
+message UserActivityResponse {
+    repeated ActivityEntry activities = 1;
+    int32 total_count = 2;
+}

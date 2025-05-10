@@ -1,0 +1,46 @@
+{
+  "title": "Auth Service Dashboard",
+  "panels": [
+    {
+      "title": "Login Metrics",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(login_attempts_total[1m])",
+          "legendFormat": "Login Attempts"
+        },
+        {
+          "expr": "rate(failed_login_attempts_total[1m])",
+          "legendFormat": "Failed Logins"
+        }
+      ]
+    },
+    {
+      "title": "Token Validation",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(token_validation_errors_total[1m])",
+          "legendFormat": "Validation Errors"
+        }
+      ]
+    },
+    {
+      "title": "Service Health",
+      "type": "singlestat",
+      "targets": [
+        {
+          "expr": "service_health",
+          "legendFormat": "Health Status"
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  }
+}

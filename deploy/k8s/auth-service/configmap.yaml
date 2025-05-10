@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-config
+  labels:
+    app: cryptobot
+    tier: backend
+    service: auth
+data:
+  DATABASE_URL: "postgresql://user:password@auth-db:5432/auth"
+  JWT_SECRET: "REPLACE_WITH_ACTUAL_SECRET"
+  JWT_EXPIRE_MINUTES: "1440"
+  GRPC_PORT: "50051"
+  HTTP_PORT: "5000"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"

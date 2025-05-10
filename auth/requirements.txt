@@ -1,0 +1,29 @@
+# FastAPI and server
+fastapi==0.95.2
+uvicorn==0.22.0
+pydantic==1.10.7
+python-multipart==0.0.6
+email-validator==2.0.0
+
+# Auth
+python-jose==3.3.0
+passlib==1.7.4
+argon2-cffi==21.3.0
+pyotp==2.8.0
+qrcode==7.4.2
+
+# Database
+sqlalchemy==2.0.15
+alembic==1.10.4
+psycopg2-binary==2.9.6
+pymysql==1.1.0
+
+# Redis
+redis==4.5.5
+
+# HTTP client for service-to-service communication
+httpx==0.24.1
+cachetools==5.3.1
+
+# Environment and configuration
+python-dotenv==1.0.0

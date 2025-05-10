@@ -1,0 +1,44 @@
+# Data Service Configuration for Non-Docker Deployment
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8001  # Using 8001 to avoid conflict with other services
+  workers: 1
+  debug: false
+
+# Data source configuration
+data_source:
+  cache_ttl: 300  # 5 minutes
+  exchanges: ["binance", "kraken", "coinbase"]
+
+# Redis configuration for caching
+redis:
+  host: localhost
+  port: 6379
+  db: 0
+  password: ""  # Set if Redis requires authentication
+
+# Database settings (if needed)
+database:
+  url: postgresql://postgres:postgres@localhost:5432/cryptobot_data
+  pool_size: 5
+  max_overflow: 10
+  echo: false
+
+# Logging
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/data_service.log
+
+# CORS settings
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+# Storage settings
+storage:
+  data_dir: "./data_storage"
+  backup_dir: "./data_backups"

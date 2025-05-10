@@ -1,0 +1,34 @@
+{
+  "title": "Exchange Gateway Metrics",
+  "panels": [
+    {
+      "title": "Request Rate",
+      "type": "graph",
+      "targets": [{
+        "expr": "rate(exchange_gateway_requests_total[1m])",
+        "legendFormat": "{{method}} {{status}}"
+      }]
+    },
+    {
+      "title": "Error Rate",
+      "type": "graph",
+      "targets": [{
+        "expr": "rate(exchange_gateway_errors_total[1m])",
+        "legendFormat": "{{error_type}}"
+      }]
+    },
+    {
+      "title": "Latency (ms)",
+      "type": "graph",
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(exchange_gateway_request_duration_seconds_bucket[1m])) by (le)) * 1000"
+      }]
+    }
+  ],
+  "templating": {
+    "list": [{
+      "name": "exchange",
+      "query": "label_values(exchange_gateway_requests_total, exchange)"
+    }]
+  }
+}

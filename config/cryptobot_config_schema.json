@@ -1,0 +1,530 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CryptoBot Configuration Schema",
+  "description": "Schema for validating CryptoBot configuration",
+  "type": "object",
+  "required": ["services", "database", "logging"],
+  "properties": {
+    "services": {
+      "type": "object",
+      "description": "Configuration for services",
+      "required": ["auth", "strategy", "data", "trade", "backtest"],
+      "properties": {
+        "auth": {
+          "type": "object",
+          "description": "Authentication service configuration",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the service is enabled"
+            },
+            "host": {
+              "type": "string",
+              "description": "Host address",
+              "default": "0.0.0.0"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port number",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 8000
+            },
+            "workers": {
+              "type": "integer",
+              "description": "Number of worker processes",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": {
+              "type": "string",
+              "description": "Service description",
+              "default": "Authentication service"
+            },
+            "dependencies": {
+              "type": "array",
+              "description": "Service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "optional_dependencies": {
+              "type": "array",
+              "description": "Optional service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          }
+        },
+        "strategy": {
+          "type": "object",
+          "description": "Strategy service configuration",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the service is enabled"
+            },
+            "host": {
+              "type": "string",
+              "description": "Host address",
+              "default": "0.0.0.0"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port number",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 8001
+            },
+            "workers": {
+              "type": "integer",
+              "description": "Number of worker processes",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": {
+              "type": "string",
+              "description": "Service description",
+              "default": "Strategy management service"
+            },
+            "dependencies": {
+              "type": "array",
+              "description": "Service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": ["auth"]
+            },
+            "optional_dependencies": {
+              "type": "array",
+              "description": "Optional service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          }
+        },
+        "data": {
+          "type": "object",
+          "description": "Data service configuration",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the service is enabled"
+            },
+            "host": {
+              "type": "string",
+              "description": "Host address",
+              "default": "0.0.0.0"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port number",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 8002
+            },
+            "workers": {
+              "type": "integer",
+              "description": "Number of worker processes",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": {
+              "type": "string",
+              "description": "Service description",
+              "default": "Market data service"
+            },
+            "dependencies": {
+              "type": "array",
+              "description": "Service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": ["auth"]
+            },
+            "optional_dependencies": {
+              "type": "array",
+              "description": "Optional service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          }
+        },
+        "trade": {
+          "type": "object",
+          "description": "Trade service configuration",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the service is enabled"
+            },
+            "host": {
+              "type": "string",
+              "description": "Host address",
+              "default": "0.0.0.0"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port number",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 8003
+            },
+            "workers": {
+              "type": "integer",
+              "description": "Number of worker processes",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": {
+              "type": "string",
+              "description": "Service description",
+              "default": "Trade execution service"
+            },
+            "dependencies": {
+              "type": "array",
+              "description": "Service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": ["auth", "strategy", "data"]
+            },
+            "optional_dependencies": {
+              "type": "array",
+              "description": "Optional service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          }
+        },
+        "backtest": {
+          "type": "object",
+          "description": "Backtest service configuration",
+          "required": ["enabled"],
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the service is enabled"
+            },
+            "host": {
+              "type": "string",
+              "description": "Host address",
+              "default": "0.0.0.0"
+            },
+            "port": {
+              "type": "integer",
+              "description": "Port number",
+              "minimum": 1,
+              "maximum": 65535,
+              "default": 8004
+            },
+            "workers": {
+              "type": "integer",
+              "description": "Number of worker processes",
+              "minimum": 1,
+              "default": 1
+            },
+            "description": {
+              "type": "string",
+              "description": "Service description",
+              "default": "Backtesting service"
+            },
+            "dependencies": {
+              "type": "array",
+              "description": "Service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": ["auth", "strategy", "data"]
+            },
+            "optional_dependencies": {
+              "type": "array",
+              "description": "Optional service dependencies",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          }
+        }
+      }
+    },
+    "database": {
+      "type": "object",
+      "description": "Database configuration",
+      "required": ["url"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "Database URL"
+        },
+        "pool_size": {
+          "type": "integer",
+          "description": "Connection pool size",
+          "minimum": 1,
+          "default": 5
+        },
+        "max_overflow": {
+          "type": "integer",
+          "description": "Maximum overflow connections",
+          "minimum": 0,
+          "default": 10
+        },
+        "echo": {
+          "type": "boolean",
+          "description": "Whether to echo SQL statements",
+          "default": false
+        }
+      }
+    },
+    "logging": {
+      "type": "object",
+      "description": "Logging configuration",
+      "properties": {
+        "level": {
+          "type": "string",
+          "description": "Logging level",
+          "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"],
+          "default": "INFO"
+        },
+        "file": {
+          "type": "string",
+          "description": "Log file path",
+          "default": "cryptobot.log"
+        },
+        "format": {
+          "type": "string",
+          "description": "Log format",
+          "default": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "description": "Security configuration",
+      "properties": {
+        "secret_key": {
+          "type": "string",
+          "description": "Secret key for JWT tokens"
+        },
+        "token_expiration": {
+          "type": "integer",
+          "description": "Token expiration time in seconds",
+          "minimum": 60,
+          "default": 3600
+        },
+        "password_hash_algorithm": {
+          "type": "string",
+          "description": "Password hashing algorithm",
+          "enum": ["argon2", "bcrypt", "pbkdf2"],
+          "default": "argon2"
+        },
+        "argon2_time_cost": {
+          "type": "integer",
+          "description": "Argon2 time cost",
+          "minimum": 1,
+          "default": 3
+        },
+        "argon2_memory_cost": {
+          "type": "integer",
+          "description": "Argon2 memory cost",
+          "minimum": 8192,
+          "default": 65536
+        },
+        "argon2_parallelism": {
+          "type": "integer",
+          "description": "Argon2 parallelism",
+          "minimum": 1,
+          "default": 4
+        }
+      }
+    },
+    "management_api": {
+      "type": "object",
+      "description": "Management API configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the management API is enabled",
+          "default": true
+        },
+        "host": {
+          "type": "string",
+          "description": "Host address",
+          "default": "0.0.0.0"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port number",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 8080
+        }
+      }
+    },
+    "config_ui": {
+      "type": "object",
+      "description": "Configuration UI configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the configuration UI is enabled",
+          "default": true
+        },
+        "host": {
+          "type": "string",
+          "description": "Host address",
+          "default": "0.0.0.0"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port number",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 8081
+        }
+      }
+    },
+    "auto_start": {
+      "type": "boolean",
+      "description": "Whether to automatically start services",
+      "default": true
+    },
+    "health_check": {
+      "type": "object",
+      "description": "Health check configuration",
+      "properties": {
+        "interval": {
+          "type": "integer",
+          "description": "Health check interval in seconds",
+          "minimum": 1,
+          "default": 30
+        },
+        "auto_restart": {
+          "type": "boolean",
+          "description": "Whether to automatically restart failed services",
+          "default": true
+        },
+        "max_restart_attempts": {
+          "type": "integer",
+          "description": "Maximum number of restart attempts",
+          "minimum": 1,
+          "default": 3
+        },
+        "restart_cooldown": {
+          "type": "integer",
+          "description": "Restart cooldown period in seconds",
+          "minimum": 1,
+          "default": 300
+        }
+      }
+    },
+    "resource_limits": {
+      "type": "object",
+      "description": "Resource limits configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether resource limits are enabled",
+          "default": true
+        },
+        "check_interval": {
+          "type": "integer",
+          "description": "Resource check interval in seconds",
+          "minimum": 1,
+          "default": 30
+        },
+        "services": {
+          "type": "object",
+          "description": "Service-specific resource limits",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "cpu_percent": {
+                "type": "number",
+                "description": "Maximum CPU usage percentage",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "memory_percent": {
+                "type": "number",
+                "description": "Maximum memory usage percentage",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "memory_bytes": {
+                "type": "integer",
+                "description": "Maximum memory usage in bytes",
+                "minimum": 0
+              },
+              "num_threads": {
+                "type": "integer",
+                "description": "Maximum number of threads",
+                "minimum": 1
+              },
+              "num_connections": {
+                "type": "integer",
+                "description": "Maximum number of network connections",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "description": "Dashboard configuration",
+      "properties": {
+        "host": {
+          "type": "string",
+          "description": "Host address",
+          "default": "0.0.0.0"
+        },
+        "port": {
+          "type": "integer",
+          "description": "Port number",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 8090
+        },
+        "refresh_interval": {
+          "type": "integer",
+          "description": "Dashboard refresh interval in seconds",
+          "minimum": 1,
+          "default": 5
+        }
+      }
+    },
+    "environment": {
+      "type": "string",
+      "description": "Environment name",
+      "enum": ["dev", "test", "stage", "prod"],
+      "default": "dev"
+    },
+    "profile": {
+      "type": "string",
+      "description": "Profile name",
+      "enum": ["default", "docker", "kubernetes"],
+      "default": "default"
+    },
+    "config_dir": {
+      "type": "string",
+      "description": "Configuration directory",
+      "default": "./config"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+# Strategy Service Configuration for Non-Docker Deployment
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1
+  debug: false
+
+# Database settings
+database:
+  url: postgresql://postgres:postgres@localhost:5432/cryptobot_strategy
+  pool_size: 5
+  max_overflow: 10
+  echo: false
+
+# Auth settings
+auth:
+  service_url: http://localhost:8000  # Auth service URL
+  secret_key: "CHANGE_THIS_TO_A_SECURE_SECRET_KEY"
+  token_cache_ttl: 60  # Cache successful token validations for 60 seconds
+
+# Role-based access control
+rbac:
+  admin_role: admin
+  trader_role: trader
+  viewer_role: viewer
+
+# Logging
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/strategy_service.log
+
+# CORS settings
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["*"]
+  allow_headers: ["*"]

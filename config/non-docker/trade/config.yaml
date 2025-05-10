@@ -1,0 +1,53 @@
+# Trade Service Configuration for Non-Docker Deployment
+
+# Server settings
+server:
+  host: 0.0.0.0
+  port: 8000
+  workers: 1
+  debug: false
+
+# Database settings
+database:
+  url: postgresql://postgres:postgres@localhost:5432/cryptobot_trade
+  pool_size: 5
+  max_overflow: 10
+  echo: false
+
+# Exchange settings
+exchange:
+  api_key: "YOUR_EXCHANGE_API_KEY"
+  api_secret: "YOUR_EXCHANGE_API_SECRET"
+  passphrase: ""  # Optional, required for some exchanges
+  sandbox: true  # Set to false for production
+
+  # Rate limits (requests per minute)
+  rate_limits:
+    binance: 1200
+    coinbase: 300
+    kraken: 360
+    ftx: 30
+
+# Auth settings
+auth:
+  service_url: http://localhost:8000  # Auth service URL
+  trade_api_key: "YOUR_TRADE_API_KEY"
+
+# Logging
+logging:
+  level: INFO
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: logs/trade_service.log
+
+# CORS settings
+cors:
+  allow_origins: ["*"]
+  allow_methods: ["*"]
+  allow_headers: ["*"]
+
+# Health check
+health_check:
+  enabled: true
+  interval_seconds: 30
+  timeout_seconds: 30
+  retries: 3

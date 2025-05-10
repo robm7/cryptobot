@@ -1,0 +1,39 @@
+{
+  "title": "Data Collector Dashboard",
+  "panels": [
+    {
+      "title": "Messages Received",
+      "type": "graph",
+      "targets": [{
+        "expr": "sum(rate(data_collector_messages_received_total[1m])) by (exchange)",
+        "legendFormat": "{{exchange}}"
+      }],
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+    },
+    {
+      "title": "Processing Latency",
+      "type": "heatmap",
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(data_collector_processing_latency_seconds_bucket[1m])) by (le, exchange))",
+        "legendFormat": "{{exchange}}"
+      }],
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+    },
+    {
+      "title": "Connection Health",
+      "type": "stat",
+      "targets": [{
+        "expr": "data_collector_connection_errors_total",
+        "legendFormat": "{{exchange}}"
+      }],
+      "gridPos": {"x": 0, "y": 8, "w": 24, "h": 4}
+    }
+  ],
+  "templating": {
+    "list": [{
+      "name": "exchange",
+      "query": "label_values(data_collector_messages_received_total, exchange)"
+    }]
+  },
+  "refresh": "1m"
+}

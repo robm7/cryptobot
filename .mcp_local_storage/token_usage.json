@@ -1,0 +1,16 @@
+{
+  "budget": 150000,
+  "current_usage": 72,
+  "usage_history": [
+    {
+      "timestamp": "2025-05-07T21:42:18.787269",
+      "tokens": 36,
+      "service": "OpenAI"
+    },
+    {
+      "timestamp": "2025-05-07T21:51:54.690585",
+      "tokens": 36,
+      "service": "OpenAI"
+    }
+  ]
+}

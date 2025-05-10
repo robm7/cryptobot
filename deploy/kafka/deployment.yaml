@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-collector
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: data-collector
+  template:
+    metadata:
+      labels:
+        app: data-collector
+    spec:
+      containers:
+      - name: collector
+        image: cryptobot/data-collector:latest
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-broker:9092"
+        - name: EXCHANGES
+          value: "binance,coinbase"
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stream-processor
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: stream-processor
+  template:
+    metadata:
+      labels:
+        app: stream-processor
+    spec:
+      containers:
+      - name: processor
+        image: cryptobot/stream-processor:latest
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-broker:9092"
+        resources:
+          requests:
+            cpu: "1"
+            memory: "1Gi"
+          limits:
+            cpu: "2"
+            memory: "2Gi"

@@ -1,0 +1,82 @@
+# Prometheus configuration for Cryptobot non-Docker deployment
+# Global configuration
+global:
+  scrape_interval: 15s     # Set the scrape interval to every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  scrape_timeout: 10s      # Timeout after 10 seconds
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "rules/alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape Node Exporter for system metrics
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    
+  # Scrape Cryptobot Auth Service
+  - job_name: 'cryptobot-auth'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8000']
+    
+  # Scrape Cryptobot Strategy Service
+  - job_name: 'cryptobot-strategy'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8001']
+    
+  # Scrape Cryptobot Backtest Service
+  - job_name: 'cryptobot-backtest'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8002']
+    
+  # Scrape Cryptobot Trade Service
+  - job_name: 'cryptobot-trade'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8003']
+    
+  # Scrape Cryptobot Data Service
+  - job_name: 'cryptobot-data'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8004']
+    
+  # Scrape Cryptobot MCP Services
+  - job_name: 'cryptobot-mcp'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['localhost:8010', 'localhost:8011', 'localhost:8012', 'localhost:8013', 'localhost:8014']
+
+  # PostgreSQL metrics (if using postgres_exporter)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['localhost:9187']
+
+  # Redis metrics (if using redis_exporter)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['localhost:9121']
+
+# Alert rules configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - localhost:9093

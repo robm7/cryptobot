@@ -1,0 +1,28 @@
+[run]
+branch = True
+source = auth-service
+omit =
+    */tests/*
+    */__init__.py
+    */setup.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    @abstractmethod
+    @property
+    @.*\.setter
+    @.*\.deleter
+    @pytest.fixture
+    @pytest.mark
+
+fail_under = 90
+precision = 2
+show_missing = True
+skip_covered = True
+skip_empty = True
