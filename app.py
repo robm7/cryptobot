@@ -18,10 +18,11 @@ from database.db import init_db, db, get_sync_db
 from api.routes import api_blueprint
 from strategies.breakout_reset import BreakoutResetStrategy
 from utils.backtest import Backtester
-from utils.realtime_data_handler import RealtimeDataHandler # Added import
-from utils.exchange_interface import MockExchangeInterface, BinanceExchangeInterface # Import both
+from utils.realtime_data_handler import RealtimeDataHandler
+from utils.exchange_interface import MockExchangeInterface, BinanceExchangeInterface # Assuming CcxtExchangeInterface was a typo for BinanceExchangeInterface or a more generic one
 from auth.auth_service import token_required
 from datetime import datetime, timedelta
+from utils.logging_utils import safe_log_info, safe_log_warning, safe_log_error, signal_logging_shutdown # Ensure signal_logging_shutdown is imported
 import pandas as pd
 import numpy as np
 from flask_cors import CORS
@@ -98,17 +99,17 @@ def create_app(test_config=None):
     @jwt.invalid_token_loader
     def invalid_token_callback(error):
         if app.config.get('TESTING'):
-            logger.warning(f"TESTING MODE: Bypassing JWT validation")
+            safe_log_warning(logger, f"TESTING MODE: Bypassing JWT validation")
             return jsonify({"error": "Invalid token"}), 401
-        logger.error(f"Invalid token: {error}")
+        safe_log_error(logger, f"Invalid token: {error}")
         return jsonify({"error": "Invalid token"}), 401
     
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         if app.config.get('TESTING'):
-            logger.warning(f"TESTING MODE: Bypassing token check")
+            safe_log_warning(logger, f"TESTING MODE: Bypassing token check")
             return jsonify({"error": "Authorization required"}), 401
-        logger.error(f"Missing token: {error}")
+        safe_log_error(logger, f"Missing token: {error}")
         return jsonify({"error": "Authorization required"}), 401
 
     # Initialize SocketIO for real-time updates
@@ -125,18 +126,23 @@ def create_app(test_config=None):
 
     if use_real_exchange:
         if not api_key or not api_secret:
-            logger.warning("API_KEY or API_SECRET not found in environment variables. Falling back to MockExchangeInterface.")
+            safe_log_warning(logger, "API_KEY or API_SECRET not found in environment variables. Falling back to MockExchangeInterface.")
             exchange_interface = MockExchangeInterface(testnet=use_testnet)
         else:
-            logger.info(f"Using real exchange: {exchange_id} ({'Testnet' if use_testnet else 'Live'})")
-            exchange_interface = CcxtExchangeInterface(
-                api_key=api_key,
-                api_secret=api_secret,
-                testnet=use_testnet,
-                exchange_id=exchange_id
-            )
+            safe_log_info(logger, f"Using real exchange: {exchange_id} ({'Testnet' if use_testnet else 'Live'})")
+            # Assuming CcxtExchangeInterface was a placeholder or specific implementation not fully shown
+            # For now, let's assume BinanceExchangeInterface if exchange_id is binance, else Mock
+            if exchange_id.lower() == 'binance':
+                exchange_interface = BinanceExchangeInterface(
+                    api_key=api_key,
+                    api_secret=api_secret,
+                    testnet=use_testnet
+                )
+            else:
+                safe_log_warning(logger, f"Exchange ID '{exchange_id}' not explicitly supported for real mode, falling back to Mock.")
+                exchange_interface = MockExchangeInterface(testnet=use_testnet)
     else:
-        logger.info("Using MockExchangeInterface.")
+        safe_log_info(logger, "Using MockExchangeInterface.")
         exchange_interface = MockExchangeInterface(testnet=use_testnet)
 
     # Initialize Realtime Data Handler
@@ -147,9 +153,9 @@ def create_app(test_config=None):
         try:
             init_db(app)
         except Exception as e:
-            logger.error(f"Failed to initialize database: {e}")
+            safe_log_error(logger, f"Failed to initialize database: {e}", exc_info=True)
             if app.config.get('SQLALCHEMY_DATABASE_URI', '').startswith('sqlite'):
-                logger.warning("SQLite database may be locked or path invalid")
+                safe_log_warning(logger, "SQLite database may be locked or path invalid")
             raise
     
     # Add cleanup handler for sync database
@@ -191,7 +197,7 @@ def create_app(test_config=None):
             **default_strategy_params
         )
     except ValueError as e:
-        logger.error(f"Failed to initialize BreakoutResetStrategy: {e}")
+        safe_log_error(logger, f"Failed to initialize BreakoutResetStrategy: {e}", exc_info=True)
         # Handle error appropriately - maybe exit or use a dummy strategy
         raise SystemExit(f"Strategy initialization failed: {e}")
 
@@ -202,15 +208,15 @@ def create_app(test_config=None):
 
     # Register API blueprint with debug logging
     if not hasattr(app, 'blueprints') or 'api' not in app.blueprints:
-        logger.info("Registering API blueprint...")
+        safe_log_info(logger, "Registering API blueprint...")
         app.register_blueprint(api_blueprint, url_prefix='/api')
-        logger.info("Successfully registered API routes")
+        safe_log_info(logger, "Successfully registered API routes")
     else:
-        logger.info("API blueprint already registered")
+        safe_log_info(logger, "API blueprint already registered")
     
     # Skip route verification in test environment
     if not app.config.get('TESTING'):
-        logger.info("Verifying protected routes...")
+        safe_log_info(logger, "Verifying protected routes...")
         
         # Check if any routes start with these prefixes
         protected_routes = [rule.rule for rule in app.url_map.iter_rules()
@@ -219,9 +225,9 @@ def create_app(test_config=None):
                         if rule.rule.startswith('/api/auth/refresh')]
         
         if not protected_routes:
-            logger.error("Failed to register protected route")
+            safe_log_error(logger, "Failed to register protected route")
         if not refresh_routes:
-            logger.error("Failed to register refresh route")
+            safe_log_error(logger, "Failed to register refresh route")
 
     # Verify protected routes exist (only in non-test environment)
     if not app.config.get('TESTING'):
@@ -236,19 +242,22 @@ def create_app(test_config=None):
                          if route not in all_routes]
         
         if missing_routes:
-            logger.error(f"Missing required routes: {', '.join(missing_routes)}")
+            safe_log_error(logger, f"Missing required routes: {', '.join(missing_routes)}")
 
     # Function to run asyncio event loop in a separate thread
     def run_asyncio_loop(loop, handler, subscriptions):
         asyncio.set_event_loop(loop)
         try:
             loop.run_until_complete(handler.start(subscriptions))
+        except Exception as e_loop:
+            safe_log_error(logger, f"Exception in run_asyncio_loop for RealtimeDataHandler: {e_loop}", exc_info=True)
         finally:
+            safe_log_info(logger, "Closing asyncio event loop for RealtimeDataHandler.")
             loop.close()
 
     # Start the RealtimeDataHandler in a background thread
     if not app.config.get('TESTING'): # Don't start handler during tests
-        logger.info("Starting RealtimeDataHandler...")
+        safe_log_info(logger, "Starting RealtimeDataHandler...")
         # Define default subscriptions (can be made dynamic later)
         default_subscriptions = [
             {'exchange': 'binance', 'symbol': 'BTCUSDT'},
@@ -261,23 +270,34 @@ def create_app(test_config=None):
         
         # Ensure handler stops on exit
         def stop_handler():
-            logger.info("Stopping RealtimeDataHandler...")
-            # Need to run stop in the correct event loop
-            async def stop_async(): 
-                await realtime_handler.stop()
+            safe_log_info(logger, "atexit: stop_handler initiated...")
             
-            # Schedule stop coroutine in the handler's loop
-            future = asyncio.run_coroutine_threadsafe(stop_async(), loop)
-            try:
-                future.result(timeout=5) # Wait max 5 seconds
-                logger.info("RealtimeDataHandler stopped successfully.")
-            except Exception as e:
-                logger.error(f"Error stopping RealtimeDataHandler: {e}")
-            # Ensure thread joins if needed, though daemon=True might suffice
-            # thread.join(timeout=5)
+            if loop.is_running():
+                async def stop_async_realtime_handler():
+                    await realtime_handler.stop()
+                
+                future = asyncio.run_coroutine_threadsafe(stop_async_realtime_handler(), loop)
+                try:
+                    future.result(timeout=10)
+                    safe_log_info(logger, "atexit: RealtimeDataHandler.stop() completed successfully.")
+                except asyncio.TimeoutError:
+                    safe_log_error(logger, "atexit: Timeout waiting for RealtimeDataHandler.stop() to complete.")
+                except Exception as e_stop:
+                    safe_log_error(logger, f"atexit: Error during RealtimeDataHandler.stop(): {e_stop}", exc_info=True)
+            else:
+                safe_log_warning(logger, "atexit: Event loop for RealtimeDataHandler was not running. Cannot call stop_async().")
+
+            safe_log_info(logger, "atexit: Signaling application-level logging shutdown...")
+            signal_logging_shutdown() # Signal that our app considers logging to be shutting down
+            
+            safe_log_info(logger, "atexit: Explicitly shutting down Python logging system...")
+            logging.shutdown()
+            # After this, safe_log will use print() because is_logging_active() will be false.
+            print(f"INFO (atexit fallback): Python logging system explicitly shut down at {datetime.now()}.")
+            safe_log_info(logger, "atexit: stop_handler finished.") # This will use print()
 
         atexit.register(stop_handler)
-        logger.info("RealtimeDataHandler started in background thread.")
+        safe_log_info(logger, "RealtimeDataHandler startup sequence in app.py complete; stop_handler registered.")
 
     return app
 
@@ -299,7 +319,7 @@ def index():
 @jwt_required()
 def dashboard():
     current_user = get_jwt_identity()
-    current_app.logger.info(f"Dashboard accessed by user: {current_user}")
+    safe_log_info(current_app.logger, f"Dashboard accessed by user: {current_user}")
     return render_template('dashboard.html')
 
 @app.route('/backtest')
@@ -336,7 +356,7 @@ def login():
         return response, 200
 
     except Exception as e:
-        current_app.logger.error(f"Login error: {str(e)}")
+        safe_log_error(current_app.logger, f"Login error: {str(e)}", exc_info=True)
         return jsonify({"error": "Internal server error"}), 500
 
 

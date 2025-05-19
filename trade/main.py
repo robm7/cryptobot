@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from .routers import trades
+from .routers import orders # Import the orders router
 from api.routers import settings as api_settings # Import the new settings router
 from services.data.logging_middleware import RequestLoggingMiddleware
 from database.db import get_db # Assuming get_db is in the common database.db module
@@ -33,6 +34,7 @@ app.add_middleware(
 # Include routers
 app.include_router(trades.router, prefix="/api/trades")
 app.include_router(api_settings.router) # Include the settings router
+app.include_router(orders.router, prefix="/api/v1/orders", tags=["orders"])
 
 if __name__ == "__main__":
     import uvicorn

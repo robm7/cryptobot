@@ -15,45 +15,42 @@ class AuditService:
         if not db_session:
             self.logger.warning("AuditService initialized without a DB session. Audit logging will be disabled.")
 
-    def log_event(self, 
-                 event_type: str,
-                 action_details: Dict[str, Any],
-                 user_id: int = None,
-                 ip_address: str = None,
-                 status: str = "success",
-                 resource_type: str = None,
-                 resource_id: int = None) -> AuditLog:
+    async def log_event(self,
+                        event_type: str,
+                        action_details: Dict[str, Any],
+                        user_id: int = None,
+                        ip_address: str = None,
+                        status: str = "success",
+                        resource_type: str = None,
+                        resource_id: int = None) -> AuditLog:
         """Log an audit event to the database"""
         
         if not self.db:
             self.logger.warning(f"Audit event '{event_type}' not logged to DB: AuditService has no DB session.")
             return None # Or some other appropriate non-DB action
 
-        try:
-            audit_log = AuditLog(
-                event_type=event_type,
-                user_id=user_id,
-                action_details=json.dumps(action_details),
-                ip_address=ip_address,
-                status=status,
-                resource_type=resource_type,
-                resource_id=resource_id
-            )
-            
-            self.db.add(audit_log)
-            self.db.commit()
-            self.db.refresh(audit_log)
-            
-            self.logger.info(f"Audit log created: {event_type} by user {user_id}")
-            return audit_log
-            
-        except Exception as e:
-            if self.db: # Check again in case it was set to None concurrently (unlikely here but good practice)
-                self.db.rollback()
-            self.logger.error(f"Failed to create audit log: {str(e)}")
-            # Decide if to re-raise or just log and continue if audit is non-critical
-            # For now, let's not re-raise to allow the main request to proceed
-            return None # Or re-raise if audit failure should halt operations
+        async with self.db as session:
+            try:
+                audit_log = AuditLog(
+                    event_type=event_type,
+                    user_id=user_id,
+                    action_details=json.dumps(action_details),
+                    ip_address=ip_address,
+                    status=status,
+                    resource_type=resource_type,
+                    resource_id=resource_id
+                )
+                
+                session.add(audit_log)
+                await session.commit()
+                await session.refresh(audit_log)
+                
+                self.logger.info(f"Audit log created: {event_type} by user {user_id}")
+                return audit_log
+            except Exception as e:
+                self.logger.error(f"Failed to create audit log: {str(e)}")
+                await session.rollback()
+                raise
 
     def get_logs(self, 
                 event_type: str = None,

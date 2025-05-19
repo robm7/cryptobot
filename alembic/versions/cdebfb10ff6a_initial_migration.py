@@ -80,10 +80,6 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.drop_table('backtest_result')
-    op.drop_table('trade')
-    op.drop_table('user')
-    op.drop_table('strategy')
     # ### end Alembic commands ###
 
 
@@ -110,7 +106,7 @@ def downgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )
-    op.create_table('trade',
+    op.create_table('trades',
     sa.Column('id', sa.INTEGER(), nullable=False),
     sa.Column('symbol', sa.VARCHAR(length=20), nullable=False),
     sa.Column('trade_type', sa.VARCHAR(length=10), nullable=False),
@@ -122,12 +118,12 @@ def downgrade() -> None:
     sa.Column('profit_loss', sa.FLOAT(), nullable=True),
     sa.Column('is_backtest', sa.BOOLEAN(), nullable=True),
     sa.Column('backtest_id', sa.INTEGER(), nullable=True),
-    sa.ForeignKeyConstraint(['backtest_id'], ['backtest_result.id'], ),
+    sa.ForeignKeyConstraint(['backtest_id'], ['backtest_results.id'], ),
     sa.ForeignKeyConstraint(['strategy_id'], ['strategy.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['user.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('backtest_result',
+    op.create_table('backtest_results',
     sa.Column('id', sa.INTEGER(), nullable=False),
     sa.Column('strategy_id', sa.INTEGER(), nullable=True),
     sa.Column('symbol', sa.VARCHAR(length=20), nullable=False),

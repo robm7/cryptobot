@@ -404,7 +404,7 @@ class ExchangeClient:
         await self._handle_rate_limits()
         
         try:
-            return self.client.fetch_balance()
+            return await self.client.fetch_balance() # Added await
         except ccxt.AuthenticationError as e:
             logger.error(f"Authentication error for {self.exchange_id}: {e}")
             raise AuthenticationError(f"Authentication error: {e}")

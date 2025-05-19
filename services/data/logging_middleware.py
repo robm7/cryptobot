@@ -26,45 +26,52 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware): # Inherit from BaseHTTPMiddl
         start_time = time.time()
         request.state.start_time = start_time # Store start time for processing time calculation
 
-        db_session: Session = None
-        audit_service_instance: AuditService
+        response: Response
+        # audit_service_instance will be set within the try or if/else block
+        # request.state.audit_service will be the primary way to access it
+
         try:
             if self.db_session_factory:
-                db_session = self.db_session_factory()
-                audit_service_instance = AuditService(db_session=db_session)
+                async with self.db_session_factory() as db_session: # Use async with for session management
+                    # Create and assign AuditService instance within the session's context
+                    audit_service_instance = AuditService(db_session=db_session)
+                    request.state.audit_service = audit_service_instance
+                    
+                    await self.log_request(request, request_id) # Now async
+                    response = await call_next(request)
             else:
                 # Fallback if no factory is provided, audit to log only
                 audit_service_instance = AuditService(db_session=None)
-            request.state.audit_service = audit_service_instance
-            
-            # Log request details (now uses request.state.audit_service)
-            self.log_request(request, request_id)
-            
-            response = await call_next(request)
+                request.state.audit_service = audit_service_instance
+
+                await self.log_request(request, request_id) # Now async
+                response = await call_next(request)
             
         except Exception as e:
-            # Log errors (now uses request.state.audit_service if available, or a new instance)
-            # Ensure audit_service is available on request.state even if initial setup failed partially
-            if not hasattr(request.state, 'audit_service'):
-                 request.state.audit_service = AuditService(db_session=None) # Fallback for error logging
-            self.log_error(request, request_id, e)
+            # Ensure audit_service is available for error logging, potentially without a session
+            if not hasattr(request.state, 'audit_service') or not request.state.audit_service:
+                # This case might happen if db_session_factory() itself fails before audit_service_instance is set,
+                # or if we are in the 'else' block and something went wrong before audit_service_instance was set.
+                self.logger.warning("AuditService not available on request.state during exception handling, creating fallback.")
+                request.state.audit_service = AuditService(db_session=None) # Fallback for error logging
+            
+            await self.log_error(request, request_id, e) # Now async
             raise
-        finally:
-            if db_session: # Close session if it was opened by the factory
-                try:
-                    db_session.close()
-                except Exception as e:
-                    self.logger.error(f"Error closing DB session in audit middleware: {e}")
+        # 'finally' block for db_session.close() is no longer needed due to 'async with'
 
+        # If an exception was raised and not caught locally (i.e. re-raised),
+        # 'response' might not be set. However, the original code structure implies
+        # that if we reach here, 'response' from call_next is available.
         process_time = (time.time() - start_time) * 1000
         response.headers["X-Process-Time"] = str(process_time)
         response.headers["X-Request-ID"] = request_id
         
+        # log_response does not use audit_service and remains synchronous
         self.log_response(request, request_id, response, process_time)
         
         return response
 
-    def log_request(self, request: Request, request_id: str):
+    async def log_request(self, request: Request, request_id: str): # Changed to async
         """Log incoming request details"""
         log_data = {
             "request_id": request_id,
@@ -77,17 +84,16 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware): # Inherit from BaseHTTPMiddl
         }
         self.logger.info(json.dumps(log_data))
         # Use audit_service from request.state
-        if hasattr(request.state, 'audit_service'):
-            request.state.audit_service.log_event(
-                event_type="api_request_started", # Changed event type
+        if hasattr(request.state, 'audit_service') and request.state.audit_service: # Added check for truthiness
+            await request.state.audit_service.log_event( # Added await
+                event_type="api_request_started",
                 action_details=log_data,
                 user_id=request.state.user.get("username") if hasattr(request.state, "user") and hasattr(request.state.user, "get") else None,
                 ip_address=request.client.host if request.client else None,
                 status="started"
             )
         else:
-            # Fallback if audit_service was not set on request.state (should not happen with current dispatch logic)
-            self.logger.warning("AuditService not found on request.state during log_request")
+            self.logger.warning("AuditService not found or not initialized on request.state during log_request")
 
 
     def log_response(self, request: Request, request_id: str, response, process_time: float):
@@ -103,7 +109,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware): # Inherit from BaseHTTPMiddl
         }
         self.logger.info(json.dumps(log_data))
 
-    def log_error(self, request: Request, request_id: str, error: Exception):
+    async def log_error(self, request: Request, request_id: str, error: Exception): # Changed to async
         """Log error details"""
         log_data = {
             "request_id": request_id,
@@ -116,8 +122,8 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware): # Inherit from BaseHTTPMiddl
         }
         self.logger.error(json.dumps(log_data))
         # Use audit_service from request.state
-        if hasattr(request.state, 'audit_service'):
-            request.state.audit_service.log_event(
+        if hasattr(request.state, 'audit_service') and request.state.audit_service: # Added check for truthiness
+            await request.state.audit_service.log_event( # Added await
                 event_type="api_error",
                 action_details=log_data,
                 user_id=request.state.user.get("username") if hasattr(request.state, "user") and hasattr(request.state.user, "get") else None,
@@ -125,5 +131,4 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware): # Inherit from BaseHTTPMiddl
                 status="error"
             )
         else:
-            # Fallback if audit_service was not set on request.state
-            self.logger.warning("AuditService not found on request.state during log_error")
+            self.logger.warning("AuditService not found or not initialized on request.state during log_error")

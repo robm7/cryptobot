@@ -23,112 +23,53 @@ load_dotenv()
 db = SQLAlchemy()
 
 # Async SQLAlchemy setup
-def _get_database_url():
-    """Get database URL with proper validation and test support."""
-    url = os.getenv("DATABASE_URL")
-    
-    # Handle test environment
-    if os.getenv("TESTING") == "1":
-        return "sqlite+aiosqlite:///:memory:"
-    
-    # Default to SQLite if no URL provided
-    if not url:
-        db_path = Path('database/cryptobot.db').absolute()
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        return f"sqlite+aiosqlite:///{db_path}"
-    
-    # Validate database URLs
-    protocol_pattern = r'^(?P<protocol>sqlite\+?aiosqlite?|postgres(ql)?(\+\w+)?|mysql(\+pymysql)?)://'
-    if not re.match(protocol_pattern, url, re.IGNORECASE):
-        raise ValueError(
-            f"Invalid database URL format - must use one of these protocols:\n"
-            f"- SQLite: sqlite:///path or sqlite+aiosqlite:///path\n"
-            f"- PostgreSQL: postgresql:// or postgres://\n"
-            f"- MySQL: mysql:// or mysql+pymysql://"
-        )
-        
-    # Special handling for SQLite paths
-    if url.lower().startswith(("sqlite:///", "sqlite+aiosqlite:///")) and not url.lower().startswith("sqlite:///:memory:"):
-        path_part = url.split("///")[-1]
-        path_obj = Path(path_part)
-        
-        # Convert relative paths to absolute based on project root
-        if not path_obj.is_absolute():
-            path_obj = Path(__file__).parent.parent / path_part
-            
-        # Validate path exists or can be created
-        if path_obj.exists():
-            if not path_obj.is_file():
-                raise ValueError(f"Database path exists but is not a file: {path_obj}")
-        else:
-            try:
-                path_obj.parent.mkdir(parents=True, exist_ok=True)
-                path_obj.touch(exist_ok=True)
-            except (OSError, PermissionError) as e:
-                raise ValueError(f"Invalid database path: {str(e)}") from e
-                
-        # Normalize path for cross-platform compatibility
-        normalized_path = str(path_obj.resolve())
-        url = f"sqlite+aiosqlite:///{normalized_path}"
-    
-    return url
+DATABASE_URL = 'postgresql+asyncpg://postgres:postgres@localhost:5432/cryptobot_db'
 
-DATABASE_URL = _get_database_url()
+# The _get_database_url function is no longer needed as DATABASE_URL is set directly.
+# If you need dynamic URL generation or SQLite fallback, this section would need to be adjusted.
 
 Base = declarative_base()
 
-def verify_db_connection():
+async def verify_db_connection():
     """Verify database connectivity by establishing a test connection."""
+    test_engine = None  # Initialize to ensure it's defined in finally
     try:
-        if DATABASE_URL.startswith("sqlite"):
-            # For SQLite, just check if we can create the engine
-            test_engine = create_async_engine(DATABASE_URL)
-            test_engine.connect()
-        else:
-            # For other databases, actually test a connection
-            test_engine = create_async_engine(
-                DATABASE_URL,
-                poolclass=NullPool,
-                connect_args={"connect_timeout": 5}
-            )
-            async def _test_conn():
-                async with test_engine.connect() as conn:
-                    await conn.execute("SELECT 1")
-            import asyncio
-            asyncio.run(_test_conn())
+        # For PostgreSQL, test a connection
+        test_engine = create_async_engine(
+            DATABASE_URL,
+            poolclass=NullPool,
+            connect_args={"connect_timeout": 5} # Standard for asyncpg
+        )
+        async def _test_conn_inner(): # Renamed to avoid conflict if verify_db_connection itself is called _test_conn
+            async with test_engine.connect() as conn:
+                await conn.execute("SELECT 1") # Standard SQL test query
+        
+        await _test_conn_inner() # Directly await the async function
+
     except Exception as e:
         raise ConnectionError(f"Failed to connect to database: {str(e)}") from e
     finally:
-        if 'test_engine' in locals():
-            test_engine.sync_engine.dispose()
+        if test_engine and hasattr(test_engine, 'dispose'): # Check if test_engine was successfully created and has dispose
+            await test_engine.dispose() # Use await for async dispose
 
 # Async engine and session
-# Configure engine based on database type
-if DATABASE_URL.startswith("sqlite"):
-    # SQLite/aiosqlite doesn't support connection pooling
-    engine: AsyncEngine = create_async_engine(
-        DATABASE_URL,
-        echo=True,
-        poolclass=NullPool,
-        connect_args={"check_same_thread": False}
-    )
-else:
-    # Other databases support connection pooling
-    engine: AsyncEngine = create_async_engine(
-        DATABASE_URL,
-        echo=True,
-        pool_size=10,
-        max_overflow=20,
-        pool_timeout=30,
-        pool_recycle=3600,
-        pool_pre_ping=True
-        # connect_args should not include check_same_thread for PostgreSQL
-    )
+engine: AsyncEngine = create_async_engine(
+    DATABASE_URL,
+    echo=True, # Adjust echo based on existing config or best practice
+    # PostgreSQL specific pool settings (can be adjusted)
+    pool_size=10,
+    max_overflow=20,
+    pool_timeout=30,
+    pool_recycle=3600,
+    pool_pre_ping=True
+)
 
-async_session = sessionmaker(
-    engine,
+AsyncSessionLocal = sessionmaker(
+    bind=engine,
     class_=AsyncSession,
-    expire_on_commit=False
+    expire_on_commit=False, # Common default, adjust if project has specific needs
+    autocommit=False,
+    autoflush=False,
 )
 
 # Sync engine for tests
@@ -175,7 +116,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
             # Use db session
             await db.commit()
     """
-    async with async_session() as session:
+    async with AsyncSessionLocal() as session: # Use new AsyncSessionLocal
         try:
             yield session
             await session.commit()
@@ -214,9 +155,9 @@ async def init_db(app=None) -> None: # Make init_db async
 
 __all__ = [
     'Base',
-    'db',
+    'db', # Retained for Flask-SQLAlchemy sync parts if still used elsewhere
     'engine',
-    'async_session',
+    'AsyncSessionLocal', # Changed from 'async_session'
     'get_db',
     'get_sync_db',
     'init_db',

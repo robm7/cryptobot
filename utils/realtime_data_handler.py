@@ -3,8 +3,9 @@ import websockets
 import json
 import logging
 from flask_socketio import SocketIO
+from .logging_utils import safe_log_info, safe_log_warning, safe_log_error, safe_log_debug # Updated import
 
-logger = logging.getLogger(__name__) # Ensure logger is defined at module level
+logger = logging.getLogger(__name__) # Standard logger instance
 
 from strategies.base_strategy import BaseStrategy # Assuming a base class
 from typing import List, Dict
@@ -18,72 +19,90 @@ class RealtimeDataHandler:
 
     async def _handle_connection(self, exchange, symbol):
         """Handles a single WebSocket connection for a given exchange and symbol."""
-        # Replace with actual exchange WebSocket endpoint and subscription message
-        # Example using a generic websocket library
-        # TODO: Make the URI dynamic based on the 'exchange' parameter
         uri = f"wss://stream.binance.com:9443/ws/{symbol.lower()}@kline_1m" # Example for Binance 1m klines
-        logger.info(f"Attempting to connect to WebSocket for {exchange} - {symbol} at {uri}")
+        safe_log_info(logger, f"Attempting to connect to WebSocket for {exchange} - {symbol} at {uri}")
 
         while self.running:
             try:
                 async with websockets.connect(uri) as websocket:
-                    logger.info(f"Connected to {exchange} WebSocket for {symbol}")
+                    safe_log_info(logger, f"Connected to {exchange} WebSocket for {symbol}")
                     # Send subscription message if required by the exchange
                     # subscribe_msg = json.dumps({"method": "SUBSCRIBE", "params": [f"{symbol.lower()}@kline_1m"], "id": 1})
                     # await websocket.send(subscribe_msg)
-                    # logger.debug(f"Sent subscription message for {symbol}")
+                    # safe_log_debug(logger, f"Sent subscription message for {symbol}")
 
-                    while self.running:
-                        message = await websocket.recv()
-                        logger.debug(f"Received raw message for {symbol}: {message[:100]}...") # Log truncated message
-                        data = json.loads(message)
-                        # Process the received data (e.g., extract kline info)
-                        if 'k' in data: # Example processing for Binance kline stream
-                            kline = data['k']
-                            processed_data = {
-                                'symbol': data['s'],
-                                'timestamp': data['E'],
-                                'open': kline['o'],
-                                'high': kline['h'],
-                                'low': kline['l'],
-                                'close': kline['c'],
-                                'volume': kline['v'],
-                                'is_closed': kline['x']
-                            }
-                            logger.debug(f"Processed kline data for {symbol}: Close={processed_data['close']}, Time={processed_data['timestamp']}")
-                            # Emit data to frontend via SocketIO
-                            self.socketio.emit(f'realtime_data_{symbol}', processed_data)
-                            # Pass data to relevant strategies
-                            if symbol in self.active_strategies:
-                                for strategy in self.active_strategies[symbol]:
-                                    try:
-                                        # Assuming strategies have a method to process single data points
-                                        await strategy.process_realtime_data(processed_data)
-                                        logger.debug(f"Passed data to strategy {strategy.__class__.__name__} for {symbol}")
-                                    except Exception as strat_e:
-                                        logger.error(f"Error processing data in strategy {strategy.__class__.__name__} for {symbol}: {strat_e}", exc_info=True)
-                        else:
-                            logger.debug(f"Received non-kline message for {symbol}: {data}")
+                    while self.running: # Inner loop for receiving messages
+                        try:
+                            message = await websocket.recv()
+                            safe_log_debug(logger, f"Received raw message for {symbol}: {message[:100]}...")
+                            data = json.loads(message)
+                            if 'k' in data:
+                                kline = data['k']
+                                processed_data = {
+                                    'symbol': data['s'],
+                                    'timestamp': data['E'],
+                                    'open': kline['o'],
+                                    'high': kline['h'],
+                                    'low': kline['l'],
+                                    'close': kline['c'],
+                                    'volume': kline['v'],
+                                    'is_closed': kline['x']
+                                }
+                                safe_log_debug(logger, f"Processed kline data for {symbol}: Close={processed_data['close']}, Time={processed_data['timestamp']}")
+                                self.socketio.emit(f'realtime_data_{symbol}', processed_data)
+                                if symbol in self.active_strategies:
+                                    for strategy in self.active_strategies[symbol]:
+                                        try:
+                                            await strategy.process_realtime_data(processed_data)
+                                            safe_log_debug(logger, f"Passed data to strategy {strategy.__class__.__name__} for {symbol}")
+                                        except Exception as strat_e:
+                                            safe_log_error(logger, f"Error processing data in strategy {strategy.__class__.__name__} for {symbol}: {strat_e}", exc_info=True)
+                            else:
+                                safe_log_debug(logger, f"Received non-kline message for {symbol}: {data}")
+                        except websockets.exceptions.ConnectionClosed: # More specific for recv errors
+                            safe_log_warning(logger, f"WebSocket connection closed while receiving for {symbol}. Attempting to reconnect outer loop.")
+                            break # Break inner loop to trigger outer loop's reconnect logic
+                        except json.JSONDecodeError as e_json:
+                            safe_log_error(logger, f"Failed to decode JSON message for {symbol}: {e_json}. Message: {message[:200]}...", exc_info=True)
+                            # Continue receiving other messages
+                        except Exception as e_recv: # Catch other errors during message handling
+                            safe_log_error(logger, f"Error during WebSocket message handling for {symbol}: {e_recv}", exc_info=True)
+                            # Depending on severity, might break or continue
 
-            except websockets.exceptions.ConnectionClosedOK:
-                logger.info(f"WebSocket connection closed normally for {symbol}.")
-                break # Exit inner loop if closed normally
-            except websockets.exceptions.ConnectionClosedError as e:
-                logger.warning(f"WebSocket connection closed unexpectedly for {symbol}: {e}. Reconnecting in 5s...")
-                await asyncio.sleep(5) # Wait before reconnecting
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to decode JSON message for {symbol}: {e}. Message: {message[:200]}...", exc_info=True)
-                # Decide whether to continue or break/reconnect
-            except Exception as e:
-                logger.error(f"Unexpected error in WebSocket handler for {symbol}: {e}", exc_info=True)
-                logger.info("Waiting 10s before attempting to reconnect...")
-                await asyncio.sleep(10) # Wait longer on general errors
+            except websockets.exceptions.InvalidStatus as e_status:
+                status_code_val = None
+                try:
+                    # The status_code is on the response attribute of InvalidStatus
+                    if hasattr(e_status, 'response') and e_status.response is not None and hasattr(e_status.response, 'status_code'):
+                        status_code_val = e_status.response.status_code
+                except AttributeError: # Should not happen if attributes exist, but as a safeguard
+                    pass
 
-            if not self.running:
-                logger.info(f"Handler stopped, exiting connection loop for {symbol}.")
-                break # Exit outer loop if handler stopped
+                if status_code_val == 451:
+                    safe_log_warning(logger, f"WebSocket connection for {symbol} rejected with status 451 (Unavailable For Legal Reasons). Will not attempt to reconnect this symbol.")
+                    break # Exit the 'while self.running' loop for this specific symbol
+                else:
+                    safe_log_error(logger, f"WebSocket connection for {symbol} failed with InvalidStatus (code: {status_code_val if status_code_val else 'unknown'}): {e_status}. Reconnecting in 10s...", exc_info=True)
+                    await asyncio.sleep(10)
+            except websockets.exceptions.ConnectionClosedOK: # Should ideally be caught by inner loop's ConnectionClosed
+                safe_log_info(logger, f"WebSocket connection closed normally for {symbol}.")
+                break # Exit 'while self.running' loop
+            except websockets.exceptions.ConnectionClosedError as e_closed_err:
+                safe_log_warning(logger, f"WebSocket connection closed unexpectedly for {symbol}: {e_closed_err}. Reconnecting in 5s...")
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
+                safe_log_info(logger, f"WebSocket task for {symbol} was cancelled.")
+                break # Exit main loop on cancellation
+            except Exception as e_conn: # Catch other connection errors (e.g., ConnectionRefusedError)
+                safe_log_error(logger, f"Unexpected error establishing WebSocket connection for {symbol}: {type(e_conn).__name__} - {e_conn}", exc_info=True)
+                safe_log_info(logger, "Waiting 10s before attempting to reconnect...")
+                await asyncio.sleep(10)
 
-        logger.info(f"WebSocket connection handler for {symbol} finished.")
+            if not self.running: # Check after potential sleep/reconnect attempts
+                safe_log_info(logger, f"Handler stopped by flag, exiting connection loop for {symbol}.")
+                break
+
+        safe_log_info(logger, f"WebSocket connection handler for {symbol} finished.")
 
     def register_strategy(self, strategy: BaseStrategy, symbol: str):
         """Registers a strategy instance to receive data for a specific symbol."""
@@ -91,52 +110,72 @@ class RealtimeDataHandler:
             self.active_strategies[symbol] = []
         if strategy not in self.active_strategies[symbol]:
             self.active_strategies[symbol].append(strategy)
-            logger.info(f"Registered strategy {strategy.__class__.__name__} for symbol {symbol}")
+            safe_log_info(logger, f"Registered strategy {strategy.__class__.__name__} for symbol {symbol}")
 
     def unregister_strategy(self, strategy: BaseStrategy, symbol: str):
         """Unregisters a strategy instance."""
         if symbol in self.active_strategies and strategy in self.active_strategies[symbol]:
             self.active_strategies[symbol].remove(strategy)
-            logger.info(f"Unregistered strategy {strategy.__class__.__name__} for symbol {symbol}")
-            if not self.active_strategies[symbol]: # Remove symbol entry if no strategies left
+            safe_log_info(logger, f"Unregistered strategy {strategy.__class__.__name__} for symbol {symbol}")
+            if not self.active_strategies[symbol]:
                 del self.active_strategies[symbol]
 
     async def start(self, subscriptions):
         """Starts the WebSocket connections for the given subscriptions."""
         if self.running:
-            logger.warning("RealtimeDataHandler is already running.")
+            safe_log_warning(logger, "RealtimeDataHandler is already running.")
             return
 
         self.running = True
         tasks = []
-        logger.info(f"Starting RealtimeDataHandler with {len(subscriptions)} subscriptions.")
+        safe_log_info(logger, f"Starting RealtimeDataHandler with {len(subscriptions)} subscriptions.")
         for sub in subscriptions:
-            exchange = sub.get('exchange', 'binance') # Default to binance or get from sub
+            exchange = sub.get('exchange', 'binance')
             symbol = sub.get('symbol')
             if symbol:
-                logger.info(f"Starting WebSocket connection for {exchange} - {symbol}")
+                safe_log_info(logger, f"Starting WebSocket connection for {exchange} - {symbol}")
                 task = asyncio.create_task(self._handle_connection(exchange, symbol))
                 self.connections[symbol] = task
                 tasks.append(task)
             else:
-                logger.warning(f"Subscription missing symbol: {sub}")
+                safe_log_warning(logger, f"Subscription missing symbol: {sub}")
         
         if tasks:
-            await asyncio.gather(*tasks)
-        logger.info("RealtimeDataHandler stopped.")
+            try:
+                await asyncio.gather(*tasks)
+            except Exception as e:
+                safe_log_error(logger, f"Error during asyncio.gather in start: {e}", exc_info=True)
+        safe_log_info(logger, "RealtimeDataHandler start method concluded (all tasks gathered or error occurred).")
 
     async def stop(self):
-        """Stops all active WebSocket connections."""
-        logger.info("Stopping RealtimeDataHandler...")
-        self.running = False
-        cancelled_tasks = []
-        for symbol, task in self.connections.items():
+        """Stops all active WebSocket connections gracefully."""
+        safe_log_info(logger, "Stopping RealtimeDataHandler...")
+        self.running = False # Signal all loops to stop
+
+        tasks_to_await = []
+        for symbol, task in list(self.connections.items()):
             if task and not task.done():
+                safe_log_info(logger, f"Requesting cancellation for WebSocket task for {symbol}...")
                 task.cancel()
-                logger.info(f"Cancelled WebSocket task for {symbol}")
-        self.connections = {}
-        self.active_strategies = {} # Clear strategies on stop
-        logger.info("RealtimeDataHandler stopped successfully.")
+                tasks_to_await.append(task)
+            elif task and task.done():
+                safe_log_info(logger, f"WebSocket task for {symbol} was already done.")
+        
+        if tasks_to_await:
+            safe_log_info(logger, f"Waiting for {len(tasks_to_await)} WebSocket tasks to complete cancellation...")
+            for task in tasks_to_await:
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    safe_log_info(logger, f"A WebSocket task was confirmed cancelled for {task.get_name() if hasattr(task, 'get_name') else 'unknown task'}.")
+                except Exception as e:
+                    safe_log_error(logger, f"A WebSocket task raised an unexpected error during its shutdown: {type(e).__name__} - {e}", exc_info=True)
+        else:
+            safe_log_info(logger, "No active WebSocket tasks needed to be cancelled.")
+
+        self.connections.clear()
+        self.active_strategies.clear()
+        safe_log_info(logger, "RealtimeDataHandler stopped successfully.")
 
 # Example usage (typically integrated into the Flask app)
 # async def main():
