@@ -5,8 +5,7 @@ from datetime import datetime, timedelta
 from auth.auth_service import (
     verify_password,
     get_password_hash,
-    create_tokens,
-    password_complexity,
+    create_token_pair,
     refresh_access_token,
     token_required,
     revoke_token,
@@ -60,15 +59,7 @@ def test_get_password_hash():
     with pytest.raises(ValueError):
         get_password_hash("")
 
-def test_password_complexity():
-    assert password_complexity("ValidPass123!") is True
-    assert password_complexity("short") is False
-    assert password_complexity("nouppercase123!") is False
-    assert password_complexity("NoDigits!") is False
-    assert password_complexity("NoSpecial123") is False
-    assert password_complexity("password123") is False
-
-def test_create_tokens(mock_jwt):
+def test_create_token_pair(mock_jwt):
     from auth.models.user import UserInDB, Role
     
     mock_user = UserInDB(
@@ -80,7 +71,7 @@ def test_create_tokens(mock_jwt):
     mock_jwt['create_access'].return_value = "access_token"
     mock_jwt['create_refresh'].return_value = "refresh_token"
     
-    result = create_tokens(mock_user)
+    result = create_token_pair(mock_user)
     assert result == {
         'access_token': 'access_token',
         'refresh_token': 'refresh_token'

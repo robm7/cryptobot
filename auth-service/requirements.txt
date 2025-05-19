@@ -4,6 +4,9 @@ redis==5.0.1
 python-dotenv==1.0.0
 schedule==1.2.0
 python-json-logger==2.0.7
+prometheus_flask_exporter==0.22.0 # Added for Prometheus metrics
+    # via prometheus_client ( transitive )
+prometheus_client==0.17.1 # Added as a common dependency, adjust if needed
 
 # Testing
 pytest==8.0.0

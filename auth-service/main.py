@@ -3,7 +3,10 @@ import time
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Callable, Any
-from auth_service import serve
+from .auth_service import serve # Corrected import
+import smtplib # Added for email notifications
+from email.mime.text import MIMEText # Added for email notifications
+import os # For environment variables
 
 class KeyManager:
     def __init__(self, redis_client: redis.Redis) -> None:
@@ -82,6 +85,38 @@ class KeyManager:
             except Exception as e:
                 print(f"Notification callback failed: {str(e)}")
     
+    def revoke_key(self, key_value: str, reason: str = "Revoked by user action") -> bool:
+        """Revoke an API key."""
+        key_data_str = self.redis.get(f"keys:{key_value}")
+        if not key_data_str:
+            logger.warning(f"Attempted to revoke non-existent key: {key_value}")
+            return False # Or raise error
+
+        key_data = json.loads(key_data_str)
+        if not key_data.get('is_active', False):
+            logger.info(f"Key already inactive, no action taken for revoke: {key_value}")
+            return True # Already inactive
+
+        key_data['is_active'] = False
+        key_data['rotation_status'] = 'revoked'
+        key_data.setdefault('audit_log', []).append({
+            'timestamp': datetime.utcnow().isoformat(),
+            'action': 'revoked',
+            'details': reason
+        })
+        self.redis.set(f"keys:{key_value}", json.dumps(key_data))
+        
+        user_id_parts = key_value.split('_')
+        user_id = user_id_parts[1] if len(user_id_parts) > 1 else None
+
+        self._notify('key_revoked', {
+            'key': key_value,
+            'user_id': user_id,
+            'reason': reason
+        })
+        logger.info(f"Revoked key: {key_value} for user: {user_id} due to: {reason}")
+        return True
+
     def add_notification_callback(self, callback: Callable[[Dict[str, Any]], None]) -> None:
         """Register notification callback"""
         self.notification_callbacks.append(callback)
@@ -119,9 +154,15 @@ from werkzeug.exceptions import BadRequest, Unauthorized, NotFound
 from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from prometheus_flask_exporter import PrometheusMetrics # Added
 
 def create_app(redis_client: redis.Redis, key_manager: KeyManager) -> Flask:
     app = Flask(__name__, static_folder='static')
+    
+    # Instrument with Prometheus
+    # This will expose /metrics endpoint by default
+    # And automatically track request latencies and counts for Flask routes
+    metrics = PrometheusMetrics(app)
     
     # Configure CORS
     CORS(app, resources={
@@ -188,13 +229,12 @@ def create_app(redis_client: redis.Redis, key_manager: KeyManager) -> Flask:
     # Custom 404 handler
     @app.errorhandler(404)
     def not_found(error):
-        if 'application/json' in request.headers.get('Accept', ''):
-            return jsonify({
-                'error': 'Not found',
-                'message': str(error),
-                'status_code': 404
-            }), 404
-        return render_template('404.html'), 404
+        # Always return JSON for 404 to avoid template issues for API calls
+        return jsonify({
+            'error': 'Not Found',
+            'message': 'The requested URL was not found on the server.', # Generic message
+            'status_code': 404
+        }), 404
     
     @app.route('/api/keys/current', methods=['GET'])
     def get_current_key():
@@ -284,12 +324,25 @@ def create_app(redis_client: redis.Redis, key_manager: KeyManager) -> Flask:
     
     @app.route('/api/keys/emergency-revoke', methods=['POST'])
     def emergency_revoke():
-        """Emergency revoke all keys with audit logging"""
-        user_id = request.headers.get('X-User-ID')
-        if not user_id:
-            raise Unauthorized('User ID required')
+        """Emergency revoke all keys for a target user. Requires admin privileges."""
+        # This is a conceptual check. A real implementation needs robust admin auth.
+        admin_user_id = request.headers.get('X-Admin-User-ID') # Hypothetical header for admin making the call
+        admin_api_key = request.headers.get('X-Admin-API-Key')   # Hypothetical header for admin auth
+
+        # Placeholder for actual admin authentication & authorization
+        # For example, verify admin_api_key or a JWT token for an admin user
+        is_admin = (admin_user_id == "admin_user" and admin_api_key == os.getenv("ADMIN_SERVICE_API_KEY")) # Simplified check
+        
+        if not is_admin:
+            logger.warning(f"Unauthorized attempt at emergency revoke by: {admin_user_id}")
+            raise Unauthorized('Admin privileges required for emergency revocation.')
+
+        target_user_id = request.headers.get('X-Target-User-ID') # User whose keys are to be revoked
+        if not target_user_id:
+            raise BadRequest('Target User ID (X-Target-User-ID) required for emergency revocation.')
             
-        keys = redis_client.smembers(f"user:{user_id}:keys")
+        logger.info(f"Admin {admin_user_id} initiating emergency revoke for user {target_user_id}")
+        keys = redis_client.smembers(f"user:{target_user_id}:keys")
         for key in keys:
             key_data = json.loads(redis_client.get(f"keys:{key}"))
             key_data['is_active'] = False
@@ -301,12 +354,13 @@ def create_app(redis_client: redis.Redis, key_manager: KeyManager) -> Flask:
             })
             redis_client.set(f"keys:{key}", json.dumps(key_data))
             
-        self._notify('emergency_revoked', {
-            'user_id': user_id,
-            'revoked_keys': list(keys)
+        key_manager._notify('emergency_revoked', { # Changed self._notify to key_manager._notify
+            'user_id': target_user_id, # Ensure using target_user_id
+            'revoked_keys': list(keys),
+            'admin_user_id': admin_user_id # Pass admin_user_id if available in context
         })
         
-        return jsonify({'revoked_count': len(keys)})
+        return jsonify({'revoked_count': len(keys), 'target_user_id': target_user_id})
     
     return app
 
@@ -316,8 +370,61 @@ if __name__ == '__main__':
     
     # Setup notification callback
     def notify_handler(event: Dict[str, Any]) -> None:
-        print(f"Key event: {event['event_type']}")
-        # TODO: Implement actual notifications (email, webhook, etc.)
+        event_type = event.get('event_type')
+        data = event.get('data', {})
+        print(f"Key event: {event_type}, Data: {data}")
+
+        # Email Notification Logic
+        SMTP_SERVER = os.getenv("SMTP_SERVER")
+        SMTP_PORT = os.getenv("SMTP_PORT", 587)
+        SMTP_USER = os.getenv("SMTP_USER")
+        SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+        SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+        RECIPIENT_EMAIL = os.getenv("KEY_NOTIFICATION_RECIPIENT_EMAIL") # Target for key notifications
+
+        if not all([SMTP_SERVER, SMTP_USER, SMTP_PASSWORD, SENDER_EMAIL, RECIPIENT_EMAIL]):
+            logger.warning("SMTP configuration missing. Email notifications for key events are disabled.")
+            return
+
+        subject = ""
+        body = ""
+
+        if event_type == 'key_expiring':
+            subject = f"API Key Expiring Soon: {data.get('key')}"
+            body = (f"API Key {data.get('key')} for user_id associated with this key "
+                    f"is expiring on {data.get('expires_at')}.\n"
+                    f"Days remaining: {data.get('days_remaining')}.\n"
+                    "Please rotate the key soon.")
+        elif event_type == 'key_rotated':
+            subject = f"API Key Rotated: {data.get('old_key')}"
+            body = (f"API Key {data.get('old_key')} has been rotated.\n"
+                    f"New key: {data.get('new_key')}\n"
+                    f"The old key will remain active until {data.get('grace_period_end')}.")
+        elif event_type == 'key_created':
+             subject = f"New API Key Created"
+             body = (f"A new API key {data.get('key')} was created for user {data.get('user_id')} "
+                     f"and expires on {data.get('expires_at')}.")
+        elif event_type == 'emergency_revoked':
+            subject = f"Emergency Revocation of API Keys for User {data.get('user_id')}"
+            body = (f"All API keys for user {data.get('user_id')} have been emergency revoked.\n"
+                    f"Revoked keys: {', '.join(data.get('revoked_keys', []))}")
+        else:
+            logger.info(f"No email notification configured for event type: {event_type}")
+            return
+
+        msg = MIMEText(body)
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+        msg['To'] = RECIPIENT_EMAIL
+
+        try:
+            with smtplib.SMTP(SMTP_SERVER, int(SMTP_PORT)) as server:
+                server.starttls() # Use TLS
+                server.login(SMTP_USER, SMTP_PASSWORD)
+                server.sendmail(SENDER_EMAIL, [RECIPIENT_EMAIL], msg.as_string())
+            logger.info(f"Sent key event notification email for {event_type} to {RECIPIENT_EMAIL}")
+        except Exception as e:
+            logger.error(f"Failed to send key event email for {event_type}: {str(e)}")
         
     key_manager.add_notification_callback(notify_handler)
     

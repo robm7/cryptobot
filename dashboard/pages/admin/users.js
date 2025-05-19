@@ -1,6 +1,11 @@
 import React from 'react';
-import UserManagement from '../../components/UserManagement';
+import dynamic from 'next/dynamic';
 import AdminLayout from '../../layouts/AdminLayout';
+
+const UserManagement = dynamic(() => import('../../components/UserManagement'), {
+  loading: () => <p>Loading user management...</p>,
+  ssr: false // Optional: disable SSR for this component if it's client-side only
+});
 
 const UsersPage = () => {
   return (

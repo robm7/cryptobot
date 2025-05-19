@@ -113,20 +113,21 @@ class ReliableOrderExecutor(OrderExecutionInterface):
                 
             except Exception as e:
                 error_type = str(type(e).__name__)
-                logger.error(f"Order execution failed (attempt {attempt+1}): {str(e)}")
+                logger.exception(f"Order execution failed (attempt {attempt+1}): {str(e)}")
                 
                 # Record error for circuit breaker
                 self._record_error(error_type)
                 
                 # Check if error is retryable
                 if error_type.lower() not in self.retry_config.retryable_errors:
-                    logger.error(f"Non-retryable error: {error_type}")
+                    logger.error(f"Non-retryable error: {error_type}, not retrying")
                     self.stats['failed_orders'] += 1
                     # self.execution_failure.inc()
                     return None
                 
                 # Last attempt
                 if attempt == self.retry_config.max_retries - 1:
+                    logger.error("Max retries reached, failing order")
                     self.stats['failed_orders'] += 1
                     # self.execution_failure.inc()
                     return None
@@ -157,13 +158,14 @@ class ReliableOrderExecutor(OrderExecutionInterface):
                 
             except Exception as e:
                 error_type = str(type(e).__name__)
-                logger.error(f"Order cancellation failed (attempt {attempt+1}): {str(e)}")
+                logger.exception(f"Order cancellation failed (attempt {attempt+1}): {str(e)}")
                 
                 # Record error for circuit breaker
                 self._record_error(error_type)
                 
                 # Last attempt
                 if attempt == self.retry_config.max_retries - 1:
+                    logger.error("Max retries reached, failing order cancellation")
                     return False
                 
                 # Exponential backoff
@@ -195,13 +197,14 @@ class ReliableOrderExecutor(OrderExecutionInterface):
                 
             except Exception as e:
                 error_type = str(type(e).__name__)
-                logger.error(f"Order status check failed (attempt {attempt+1}): {str(e)}")
+                logger.exception(f"Order status check failed (attempt {attempt+1}): {str(e)}")
                 
                 # Record error for circuit breaker
                 self._record_error(error_type)
                 
                 # Last attempt
                 if attempt == self.retry_config.max_retries - 1:
+                    logger.error("Max retries reached, failing order status check")
                     return None
                 
                 # Exponential backoff
@@ -352,7 +355,7 @@ class ReliableOrderExecutor(OrderExecutionInterface):
             return True
             
         except Exception as e:
-            logger.error(f"Order verification failed: {str(e)}")
+            logger.exception(f"Order verification failed: {str(e)}")
             return False
     
     async def reconcile_orders(self, time_period: str = "daily") -> Dict[str, Any]:
@@ -384,5 +387,6 @@ class ReliableOrderExecutor(OrderExecutionInterface):
             reconciliation_result["alert_triggered"] = True
             logger.warning(f"Order reconciliation mismatch exceeds threshold: {reconciliation_result['mismatch_percentage']:.2%}")
             # In production, this would trigger an alert
-        
+        else:
+            logger.info("Order reconciliation successful")
         return reconciliation_result

@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: backtest-config
+  labels:
+    app: cryptobot
+    tier: backend
+    service: backtest
+data:
+  # Application settings
+  APP_NAME: "Backtest Service"
+  DEBUG: "false"
+  MAX_CONCURRENT_BACKTESTS: "5"
+  RESULTS_TTL_DAYS: "7"
+  
+  # Database configuration
+  DATABASE_URL: "postgresql://user:password@backtest-db:5432/backtest"
+  
+  # Environment variables
+  HOST: "0.0.0.0"
+  PORT: "8000"
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"

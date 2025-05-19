@@ -16,6 +16,12 @@ export default function Trade() {
   const [error, setError] = useState('');
   const socketRef = useRef(null);
   const router = useRouter();
+  const dataCache = useRef({
+    position: null,
+    balance: null,
+    lastFetchTime: 0,
+  });
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -26,26 +32,57 @@ export default function Trade() {
 
     // Fetch initial position and balance
     const fetchInitialData = async () => {
+      const now = Date.now();
+      if (dataCache.current.lastFetchTime && (now - dataCache.current.lastFetchTime < CACHE_DURATION) && dataCache.current.position && dataCache.current.balance) {
+        console.log("Using cached initial data for trade page.");
+        setPosition(dataCache.current.position);
+        setBalance(dataCache.current.balance);
+        return;
+      }
+      console.log("Fetching fresh initial data for trade page.");
+
       try {
         const [positionRes, balanceRes] = await Promise.all([
-          axios.get(`${process.env.API_BASE_URL}/trades/position`, {
+          axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/v1/trades/position`, { // Corrected API URL
             headers: { Authorization: `Bearer ${token}` }
           }),
-          axios.get(`${process.env.API_BASE_URL}/account/balance`, {
+          axios.get(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/v1/account/balance`, { // Corrected API URL
             headers: { Authorization: `Bearer ${token}` }
           })
         ]);
-        setPosition(positionRes.data);
-        setBalance(balanceRes.data.balance);
+        
+        const newPosition = positionRes.data;
+        const newBalance = balanceRes.data.balance;
+
+        setPosition(newPosition);
+        setBalance(newBalance);
+
+        // Update cache
+        dataCache.current.position = newPosition;
+        dataCache.current.balance = newBalance;
+        dataCache.current.lastFetchTime = now;
+
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch initial data');
+        // Potentially clear cache on error or handle specific errors differently
+        if (err.response?.status === 401) {
+            router.push('/login');
+        }
       }
     };
 
     fetchInitialData();
 
     // Setup WebSocket connection
-    socketRef.current = new WebSocket(process.env.WS_URL);
+    // Ensure WS_URL is defined in your environment, e.g., process.env.NEXT_PUBLIC_WS_URL
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/api/v1/data/ws/ohlcv'; // Example default
+    
+    // Prevent multiple WebSocket connections if symbol changes rapidly or on re-renders
+    if (socketRef.current && socketRef.current.readyState !== WebSocket.CLOSED) {
+        socketRef.current.close();
+    }
+
+    socketRef.current = new WebSocket(`${wsUrl}/${symbol.replace('/',':')}/1m`); // Example: BTC:USDT/1m
 
     socketRef.current.onopen = () => {
       console.log('WebSocket connected');
@@ -78,7 +115,12 @@ export default function Trade() {
     setError('');
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post(`${process.env.API_BASE_URL}/trades/execute`, {
+      if (!token) {
+        router.push('/login');
+        setError("Authentication token not found. Please log in.");
+        return;
+      }
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/api/v1/trades/execute`, { // Corrected API URL
         symbol,
         quantity,
         type
@@ -95,33 +137,33 @@ export default function Trade() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Trading Panel</h1>
+    <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8"> {/* Adjusted padding */}
+      <h1 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Trading Panel</h1> {/* Adjusted font size and margin */}
       
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-        <div className="lg:col-span-3 bg-white p-4 rounded-lg shadow">
-          <div className="h-96">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8"> {/* Adjusted gap and margin */}
+        <div className="lg:col-span-3 bg-white p-3 sm:p-4 rounded-lg shadow"> {/* Adjusted padding */}
+          <div className="h-64 sm:h-80 lg:h-96"> {/* Responsive chart height */}
             <Chart data={priceData} />
           </div>
         </div>
 
-        <div className="bg-white p-4 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Account Summary</h2>
-          <div className="space-y-4">
+        <div className="bg-white p-3 sm:p-4 rounded-lg shadow"> {/* Adjusted padding */}
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Account Summary</h2> {/* Adjusted font size and margin */}
+          <div className="space-y-3 sm:space-y-4"> {/* Adjusted spacing */}
             <div>
-              <p className="text-gray-600">Balance</p>
-              <p className="text-2xl font-bold">${balance.toFixed(2)}</p>
+              <p className="text-sm sm:text-base text-gray-600">Balance</p> {/* Adjusted font size */}
+              <p className="text-xl sm:text-2xl font-bold">${balance.toFixed(2)}</p> {/* Adjusted font size */}
             </div>
             {position && (
               <div>
-                <p className="text-gray-600">Current Position</p>
-                <div className="flex items-center space-x-2">
-                  <span className={`text-lg font-bold ${
+                <p className="text-sm sm:text-base text-gray-600">Current Position</p> {/* Adjusted font size */}
+                <div className="flex items-center space-x-1 sm:space-x-2"> {/* Adjusted spacing */}
+                  <span className={`text-md sm:text-lg font-bold ${ /* Adjusted font size */
                     position.side === 'long' ? 'text-green-600' : 'text-red-600'
                   }`}>
                     {position.side} {position.size} {symbol.split('/')[0]}
                   </span>
-                  <span className={`text-sm ${
+                  <span className={`text-xs sm:text-sm ${ /* Adjusted font size */
                     position.unrealizedPnl >= 0 ? 'text-green-600' : 'text-red-600'
                   }`}>
                     ({position.unrealizedPnl >= 0 ? '+' : ''}{position.unrealizedPnl.toFixed(2)})
@@ -131,15 +173,16 @@ export default function Trade() {
             )}
           </div>
 
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-4">New Order</h2>
-            <div className="space-y-4">
+          <div className="mt-4 sm:mt-6"> {/* Adjusted margin */}
+            <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">New Order</h2> {/* Adjusted font size and margin */}
+            <div className="space-y-3 sm:space-y-4"> {/* Adjusted spacing */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Symbol</label>
+                <label htmlFor="symbol-select" className="block text-sm font-medium text-gray-700 mb-1">Symbol</label>
                 <select
+                  id="symbol-select"
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm sm:text-base" /* Adjusted font size */
                 >
                   <option value="BTC/USDT">BTC/USDT</option>
                   <option value="ETH/USDT">ETH/USDT</option>
@@ -147,28 +190,29 @@ export default function Trade() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <label htmlFor="quantity-input" className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
                 <input
+                  id="quantity-input"
                   type="number"
                   min="0.01"
                   step="0.01"
                   value={quantity}
                   onChange={(e) => setQuantity(parseFloat(e.target.value))}
-                  className="w-full border border-gray-300 rounded-md px-3 py-2"
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm sm:text-base" /* Adjusted font size */
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3"> {/* Adjusted gap */}
                 <button
                   onClick={() => executeTrade('buy')}
                   disabled={loading}
-                  className="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md disabled:opacity-50"
+                  className="bg-green-600 hover:bg-green-700 text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-md disabled:opacity-50 text-sm sm:text-base" /* Adjusted padding and font size */
                 >
                   Buy
                 </button>
                 <button
                   onClick={() => executeTrade('sell')}
                   disabled={loading}
-                  className="bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md disabled:opacity-50"
+                  className="bg-red-600 hover:bg-red-700 text-white py-2 sm:py-2.5 px-3 sm:px-4 rounded-md disabled:opacity-50 text-sm sm:text-base" /* Adjusted padding and font size */
                 >
                   Sell
                 </button>

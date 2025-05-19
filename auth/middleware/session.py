@@ -11,19 +11,42 @@ import geoip2.database
 import user_agents
 from typing import Optional, Dict, Any
 
-from config import settings
-from database import get_db
-from models.session import Session, SuspiciousActivity
-from models.user import User
-from utils.ip_utils import get_client_ip
-from utils.logger import logger
+from ..config import settings # Corrected import
+from database.db import get_db # Corrected import
+from ..models.session import Session, SuspiciousActivity # Corrected import
+from ..models.user import User # Corrected import
+
+import sys
+import os
+_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
+
+# from utils.ip_utils import get_client_ip # Commented out as file doesn't exist
+# from utils.logger import logger # Commented out as file might not exist or to simplify
+def get_client_ip(request: Request) -> Optional[str]: # Placeholder
+    if request.client:
+        return request.client.host
+    return "0.0.0.0" # Fallback placeholder
+
+# Basic placeholder logger if utils.logger is also an issue
+class PrintLogger:
+    def error(self, msg):
+        print(f"ERROR: {msg}")
+    def info(self, msg):
+        print(f"INFO: {msg}")
+    # Add other methods as needed (warning, debug, etc.)
+logger = PrintLogger()
+
+del sys, os, _PROJECT_ROOT # Clean up
 
 class SessionMiddleware(BaseHTTPMiddleware):
     """Middleware for managing user sessions and detecting suspicious activity"""
     
     def __init__(self, app):
         super().__init__(app)
-        self.geoip_reader = geoip2.database.Reader('GeoLite2-City.mmdb')
+        # self.geoip_reader = geoip2.database.Reader('GeoLite2-City.mmdb') # Temporarily commented out
+        self.geoip_reader = None # Ensure attribute exists
         
     async def dispatch(self, request: Request, call_next):
         # Skip session handling for certain paths
@@ -64,7 +87,7 @@ class SessionMiddleware(BaseHTTPMiddleware):
             return response
             
         except Exception as e:
-            logger.error(f"Session middleware error: {str(e)}")
+            print(f"ERROR: Session middleware error: {str(e)}") # Replaced logger
             raise
         finally:
             db.close()
@@ -156,6 +179,11 @@ class SessionMiddleware(BaseHTTPMiddleware):
         if not ip or ip == "127.0.0.1":
             return None
             
+        # Temporarily disable GeoIP lookup
+        if not self.geoip_reader:
+            logger.warning("GeoIP lookup disabled as geoip_reader is not initialized.")
+            return None
+
         try:
             response = self.geoip_reader.city(ip)
             return {
@@ -227,6 +255,6 @@ class SessionMiddleware(BaseHTTPMiddleware):
                 db.commit()
                 
         except Exception as e:
-            logger.error(f"Failed to log suspicious activity: {str(e)}")
+            print(f"ERROR: Failed to log suspicious activity: {str(e)}") # Replaced logger
         finally:
             db.close()

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional, Dict
-from models import User, Role, ActivityLog
+from .models import User, Role, ActivityLog # Corrected import
 
 class UserManager:
     def __init__(self, redis_client):

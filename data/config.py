@@ -1,4 +1,4 @@
-from pydantic import BaseSettings
+from pydantic_settings import BaseSettings # Corrected for Pydantic v2
 from typing import List
 
 class Settings(BaseSettings):
@@ -20,5 +20,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Allow and ignore extra fields from .env
 
 settings = Settings()

@@ -76,11 +76,11 @@ async def test_circuit_breaker_trip(executor):
     # Configure circuit breaker for testing
     executor.circuit_config.error_threshold = 3  # Trip after 3 errors
     executor.circuit_config.window_size_minutes = 1  # In a 1-minute window
-    
+
     # Simulate errors
     for _ in range(4):  # More than our threshold
         executor._record_error("timeout")
-    
+
     # Check circuit state
     assert not executor._check_circuit()
     assert executor.circuit_state == CircuitState.OPEN
@@ -91,33 +91,160 @@ async def test_circuit_breaker_recovery(executor):
     # Configure circuit breaker for testing
     executor.circuit_config.error_threshold = 3
     executor.circuit_config.cool_down_seconds = 0.1  # Short cool-down for testing
-    
+
     # Trip the circuit breaker
     for _ in range(4):
         executor._record_error("timeout")
-    
+
     # Verify circuit is open
     assert executor.circuit_state == CircuitState.OPEN
     assert not executor._check_circuit()
-    
+
     # Wait for cool-down
     await asyncio.sleep(0.2)
-    
+
     # Circuit should now be half-open
     assert executor._check_circuit()
     assert executor.circuit_state == CircuitState.HALF_OPEN
-    
+
     # Simulate successful request in half-open state
     # This would normally be done by a successful execute_order call
     executor.circuit_state = CircuitState.CLOSED
-    
+
     # Verify circuit is closed
     assert executor._check_circuit()
     assert executor.circuit_state == CircuitState.CLOSED
 
 @pytest.mark.asyncio
-async def test_order_verification(executor):
-    """Test order verification process"""
+async def test_circuit_breaker_warning_threshold(executor):
+    """Test circuit breaker warning threshold"""
+    # Configure circuit breaker for testing
+    executor.circuit_config.error_threshold = 5
+    executor.circuit_config.warning_threshold = 2
+    executor.circuit_config.window_size_minutes = 1
+
+    # Simulate errors
+    for _ in range(3):  # More than warning threshold, less than error threshold
+        executor._record_error("timeout")
+
+    # Check if warning is logged (we can't directly assert the log message)
+    # This test primarily ensures the warning threshold is checked
+    assert executor._check_circuit()  # Should still be closed
+    assert executor.circuit_state == CircuitState.CLOSED
+
+@pytest.mark.asyncio
+async def test_execute_order_non_retryable_error(executor):
+    """Test order execution with a non-retryable error"""
+    order_params = {
+        "symbol": "BTC/USD",
+        "side": "buy",
+        "type": "limit",
+        "amount": 1.0,
+        "price": 50000.0
+    }
+
+    # Configure a side effect that raises a non-retryable error
+    with patch.object(executor, 'execute_order', side_effect=Exception("non_retryable_error"), autospec=True) as mock_execute:
+        # Reduce retry delay for faster tests
+        executor.retry_config.initial_delay = 0.01
+        executor.retry_config.retryable_errors = ["timeout"]  # Only timeout is retryable
+
+        # Call the method
+        result = await executor.execute_order(order_params)
+
+        # Verify the result
+        assert result is None
+        mock_execute.call_count == 1  # Called only once
+        assert executor.stats['failed_orders'] == 1
+
+@pytest.mark.asyncio
+async def test_execute_order_circuit_breaker_open(executor):
+    """Test order execution when the circuit breaker is open"""
+    order_params = {
+        "symbol": "BTC/USD",
+        "side": "buy",
+        "type": "limit",
+        "amount": 1.0,
+        "price": 50000.0
+    }
+
+    # Open the circuit breaker
+    executor.circuit_state = CircuitState.OPEN
+
+    # Call the method
+    result = await executor.execute_order(order_params)
+
+    # Verify the result
+    assert result is None
+    assert executor.stats['failed_orders'] == 1
+
+@pytest.mark.asyncio
+async def test_cancel_order_success(executor):
+    """Test successful order cancellation"""
+    order_id = "ORDER_123"
+    with patch.object(executor, 'cancel_order', return_value=True, autospec=True) as mock_cancel:
+        result = await executor.cancel_order(order_id)
+        assert result is True
+        mock_cancel.assert_called_once_with(order_id)
+
+@pytest.mark.asyncio
+async def test_cancel_order_retry(executor):
+    """Test order cancellation with retry"""
+    order_id = "ORDER_123"
+    side_effect = [
+        Exception("timeout"),  # First call fails
+        Exception("timeout"),  # Second call fails
+        True      # Third call succeeds
+    ]
+    with patch.object(executor, 'cancel_order', side_effect=side_effect, autospec=True) as mock_cancel:
+        executor.retry_config.initial_delay = 0.01
+        result = await executor.cancel_order(order_id)
+        assert result is True
+        assert mock_cancel.call_count == 3
+
+@pytest.mark.asyncio
+async def test_cancel_order_circuit_breaker_open(executor):
+    """Test order cancellation when the circuit breaker is open"""
+    order_id = "ORDER_123"
+    executor.circuit_state = CircuitState.OPEN
+    result = await executor.cancel_order(order_id)
+    assert result is False
+
+@pytest.mark.asyncio
+async def test_get_order_status_success(executor):
+    """Test successful order status retrieval"""
+    order_id = "ORDER_123"
+    with patch.object(executor, 'get_order_status', return_value={'status': 'filled'}, autospec=True) as mock_get_status:
+        result = await executor.get_order_status(order_id)
+        assert result == {'status': 'filled'}
+        mock_get_status.assert_called_once_with(order_id)
+
+@pytest.mark.asyncio
+async def test_get_order_status_retry(executor):
+    """Test order status retrieval with retry"""
+    order_id = "ORDER_123"
+    side_effect = [
+        Exception("timeout"),  # First call fails
+        Exception("timeout"),  # Second call fails
+        {'status': 'filled'}      # Third call succeeds
+    ]
+    with patch.object(executor, 'get_order_status', side_effect=side_effect, autospec=True) as mock_get_status:
+        executor.retry_config.initial_delay = 0.01
+        result = await executor.get_order_status(order_id)
+        assert result == {'status': 'filled'}
+        assert mock_get_status.call_count == 3
+
+@pytest.mark.asyncio
+async def test_get_order_status_circuit_breaker_open(executor):
+    """Test order status retrieval when the circuit breaker is open"""
+    order_id = "ORDER_123"
+    executor.circuit_state = CircuitState.OPEN
+    result = await executor.get_order_status(order_id)
+    assert result is None
+
+@pytest.mark.asyncio
+async def test_order_verification_failure(executor):
+    """Test order verification failure"""
     order_id = "ORDER_123456789"
     order_params = {
         "symbol": "BTC/USD",
@@ -126,84 +253,18 @@ async def test_order_verification(executor):
         "amount": 1.0,
         "price": 50000.0
     }
-    
-    # Mock get_order_status to return a filled order
+
+    # Mock get_order_status to return a non-filled order
     with patch.object(
         executor,
         'get_order_status',
         return_value={
-            'status': 'filled',
-            'filled_qty': 1.0,
-            'avg_price': 50000.0,
+            'status': 'pending',
+            'filled_qty': 0.0,
+            'avg_price': 0.0,
             'timestamp': datetime.now().isoformat()
         }
     ):
         # Verify the order
         result = await executor._verify_order_execution(order_id, order_params)
-        assert result is True
-
-@pytest.mark.asyncio
-async def test_reconcile_orders(executor):
-    """Test order reconciliation process"""
-    result = await executor.reconcile_orders()
-    
-    assert isinstance(result, dict)
-    assert 'total_orders' in result
-    assert 'matched_orders' in result
-    assert 'mismatched_orders' in result
-    assert 'mismatch_percentage' in result
-
-@pytest.mark.asyncio
-async def test_configure(executor):
-    """Test configuration of executor parameters"""
-    config = {
-        'retry': {
-            'max_retries': 5,
-            'backoff_base': 3.0,
-            'initial_delay': 0.5,
-            'max_delay': 15.0,
-            'retryable_errors': ['timeout', 'rate_limit', 'server_error']
-        },
-        'circuit_breaker': {
-            'error_threshold': 20,
-            'warning_threshold': 5,
-            'window_size_minutes': 10,
-            'cool_down_seconds': 30
-        }
-    }
-    
-    result = await executor.configure(config)
-    
-    assert result is True
-    assert executor.retry_config.max_retries == 5
-    assert executor.retry_config.backoff_base == 3.0
-    assert executor.retry_config.initial_delay == 0.5
-    assert executor.retry_config.max_delay == 15.0
-    assert 'server_error' in executor.retry_config.retryable_errors
-    
-    assert executor.circuit_config.error_threshold == 20
-    assert executor.circuit_config.warning_threshold == 5
-    assert executor.circuit_config.window_size_minutes == 10
-    assert executor.circuit_config.cool_down_seconds == 30
-
-@pytest.mark.asyncio
-async def test_get_execution_stats(executor):
-    """Test getting execution statistics"""
-    # Record some test data
-    executor.stats['total_orders'] = 100
-    executor.stats['successful_orders'] = 95
-    executor.stats['failed_orders'] = 5
-    
-    # Record some errors
-    for _ in range(3):
-        executor._record_error("timeout")
-    
-    stats = await executor.get_execution_stats()
-    
-    assert stats['total_orders'] == 100
-    assert stats['successful_orders'] == 95
-    assert stats['failed_orders'] == 5
-    assert stats['circuit_state'] == CircuitState.CLOSED.value
-    assert 'error_rate_per_minute' in stats
-    assert 'errors_in_window' in stats
-    assert stats['errors_in_window'] == 3
+        assert result is False

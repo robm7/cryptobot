@@ -5,16 +5,16 @@ import logging
 from config import settings
 import redis
 import json
-from utils.exchange_interface import CcxtExchangeInterface
+# from utils.exchange_interface import CcxtExchangeInterface # Unused import, class does not exist
 from utils.exchange_clients import get_exchange_client
 
 logger = logging.getLogger(__name__)
 
 # Redis connection
 redis_client = redis.Redis(
-    host=settings.REDIS_HOST,
-    port=settings.REDIS_PORT,
-    db=settings.REDIS_DB,
+    host=settings.settings.REDIS_HOST, # Access instance via module
+    port=settings.settings.REDIS_PORT, # Access instance via module
+    db=settings.settings.REDIS_DB, # Access instance via module
     decode_responses=True
 )
 
@@ -149,7 +149,7 @@ class OHLCV(BaseModel):
             # Cache the data
             redis_client.setex(
                 cache_key,
-                settings.DATA_CACHE_TTL,
+                settings.settings.DATA_CACHE_TTL, # Access instance via module
                 json.dumps([item.dict() for item in normalized_data])
             )
             

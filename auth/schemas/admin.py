@@ -14,6 +14,16 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
     is_admin: Optional[bool] = None
 
+class AdminUserOut(BaseModel):
+    id: int
+    email: EmailStr
+    is_active: bool
+    is_admin: bool
+    # Add other fields like created_at, last_login as needed
+    # For now, keeping it simple to resolve the import error.
+
+    class Config:
+        from_attributes = True
 class SettingCreate(BaseModel):
     key: str
     value: str
@@ -38,4 +48,4 @@ class AuditLogResponse(BaseModel):
     ip_address: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

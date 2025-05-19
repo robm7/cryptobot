@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-config
+  labels:
+    app: cryptobot
+    tier: backend
+    service: data
+data:
+  # Server configuration
+  HOST: "0.0.0.0"
+  PORT: "8001"
+  DEBUG: "false"
+  WORKERS: "4"
+  ALLOWED_ORIGINS: "*"
+  
+  # Data source configuration
+  DATA_CACHE_TTL: "300"
+  EXCHANGES: "binance,kraken,coinbase"
+  
+  # Redis configuration for caching
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  
+  # Environment
+  LOG_LEVEL: "INFO"
+  ENVIRONMENT: "production"

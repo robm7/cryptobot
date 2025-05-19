@@ -1,7 +1,7 @@
 import pytest
-from auth_service.auth_service import AuthService
-from auth_service.key_manager import KeyManager
-from auth_service.key_service import KeyService
+from auth_service import AuthService
+from key_manager import KeyManager
+from key_service import KeyService
 import redis
 
 @pytest.fixture

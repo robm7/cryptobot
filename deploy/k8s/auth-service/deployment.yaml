@@ -24,6 +24,10 @@ spec:
         app: cryptobot
         tier: backend
         service: auth
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics' # Assuming /metrics, adjust if auth uses a different path
+        prometheus.io/port: '5000'
     spec:
       containers:
       - name: auth-service

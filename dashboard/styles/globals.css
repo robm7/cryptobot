@@ -1,0 +1,167 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles */
+html,
+body {
+  padding: 0;
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Dashboard Navigation Styles */
+.dashboard-nav {
+  @apply bg-gray-800 text-white p-4 mb-6 rounded-lg;
+}
+
+.dashboard-nav ul {
+  @apply flex flex-wrap gap-4;
+}
+
+.dashboard-nav li {
+  @apply px-3 py-2 rounded-md transition-colors;
+}
+
+.dashboard-nav li:hover {
+  @apply bg-gray-700;
+}
+
+.dashboard-nav li.active {
+  @apply bg-blue-600;
+}
+
+/* Toggle Switch Styles */
+.toggle-checkbox:checked {
+  @apply right-0 border-green-400;
+}
+
+.toggle-checkbox:checked + .toggle-label {
+  @apply bg-green-400;
+}
+
+/* Feature Highlight Animation */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.feature-highlight-pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Tooltip Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tooltip-animation {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Setup Wizard Animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.setup-wizard-animation {
+  animation: slideIn 0.5s ease-out forwards;
+}
+
+/* Quick Start Guide Animation */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.quick-start-animation {
+  animation: scaleIn 0.4s ease-out forwards;
+}
+
+/* Form Styles */
+.form-input {
+  @apply focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.form-help-text {
+  @apply mt-1 text-xs text-gray-500;
+}
+
+/* Button Styles */
+.btn {
+  @apply px-4 py-2 rounded-md transition-colors;
+}
+
+.btn-primary {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-700 hover:bg-gray-300;
+}
+
+.btn-success {
+  @apply bg-green-600 text-white hover:bg-green-700;
+}
+
+.btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700;
+}
+
+/* Card Styles */
+.card {
+  @apply bg-white p-6 rounded-lg shadow-md;
+}
+
+.card-header {
+  @apply text-xl font-semibold mb-4;
+}
+
+.card-body {
+  @apply space-y-4;
+}
+
+.card-footer {
+  @apply flex justify-between mt-6;
+}

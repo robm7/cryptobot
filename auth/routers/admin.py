@@ -8,7 +8,8 @@ import logging
 
 from ..database import get_db
 from ..models.user import User
-from ..models.session import Session, SessionOut, SessionTerminate, SuspiciousActivity
+from ..models.session import Session, SuspiciousActivity as SuspiciousActivityModel # SQLAlchemy models, aliased
+from ..schemas.session import SessionOut, SessionTerminate, SuspiciousActivityCreate # Pydantic schemas
 from ..schemas.admin import AdminUserOut
 from ..auth_utils import get_current_admin_user
 
@@ -95,17 +96,39 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @router.post("/sessions/suspicious")
 async def report_suspicious_activity(
-    activity: SuspiciousActivity,
+    activity: SuspiciousActivityCreate, # Use Pydantic model for request body
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ):
     """Report suspicious session activity"""
-    session = db.query(Session).filter(Session.id == activity.session_id).first()
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+    # Create the SQLAlchemy model instance from the Pydantic model
+    db_activity = SuspiciousActivityModel(
+        session_id=activity.session_id,
+        activity_type=activity.activity_type,
+        details=activity.details,
+        severity=activity.severity
+        # created_at will be default
+    )
     
-    session.is_suspicious = True
+    # Add to session and commit (assuming you want to save this reported activity)
+    # If you only want to mark the main Session as suspicious, this part might differ.
+    # For now, let's assume we are creating a new SuspiciousActivity entry.
+    db.add(db_activity)
+    
+    # Mark the main session as suspicious
+    db_session_to_mark = db.query(Session).filter(Session.id == activity.session_id).first()
+    if not db_session_to_mark:
+        # Rollback if the main session isn't found, as we added db_activity
+        db.rollback()
+        raise HTTPException(status_code=404, detail="Session to mark as suspicious not found")
+    
+    db_session_to_mark.is_suspicious = True
     db.commit()
+    # It's good practice to refresh the instance if you return it or parts of it
+    db.refresh(db_activity)
+    db.refresh(db_session_to_mark)
+    
+    return {"message": "Suspicious activity reported and session marked.", "activity_id": db_activity.id}
     
     # Broadcast suspicious activity to all connected clients
     await session_manager.broadcast({

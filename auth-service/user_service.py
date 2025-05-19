@@ -2,7 +2,7 @@ import grpc
 from concurrent import futures
 from datetime import datetime
 from typing import List, Optional
-from auth_pb2 import (
+from .auth_pb2 import ( # Corrected import
     UserResponse,
     ListUsersResponse,
     RoleResponse,
@@ -13,12 +13,12 @@ from auth_pb2 import (
     AssignRoleResponse,
     RevokeRoleResponse
 )
-from auth_pb2_grpc import (
+from .auth_pb2_grpc import ( # Corrected import
     UserManagementServiceServicer,
     add_UserManagementServiceServicer_to_server
 )
-from models import User, Role, ActivityLog
-from user_manager import UserManager
+from .models import User, Role, ActivityLog # Corrected import
+from .user_manager import UserManager # Corrected import
 
 class UserService(UserManagementServiceServicer):
     def __init__(self, redis_client, user_manager: Optional[UserManager] = None) -> None:

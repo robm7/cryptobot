@@ -3,12 +3,43 @@ _transform: true
 
 services:
   - name: auth-service-rest
-    url: http://auth-service:8000
+    url: http://auth-service:5000 # Corrected port for Flask app
     routes:
-      - name: auth-rest-route
-        paths: ["/auth"]
-        methods: ["POST", "GET"]
-        strip_path: true
+      - name: auth-api-keys-route # More specific name
+        paths: ["/auth/api/keys"] # Expose /api/keys under /auth prefix
+        methods: ["GET", "POST", "PUT", "DELETE"] # Add relevant methods for key management
+        strip_path: true # Strips /auth/api/keys, forwards / to auth-service, which is NOT what we want.
+                         # If auth-service Flask app has routes like /api/keys/*
+                         # then Kong path should be /auth, strip_path=true, and Flask app handles /api/keys/*
+                         # OR Kong path is /auth/api/keys, strip_path=true, Flask app handles /* (relative to /api/keys)
+                         # OR Kong path is /auth/api/keys, strip_path=false, Flask app handles /auth/api/keys/* (unlikely)
+
+                         # Let's assume Flask app's routes are /api/keys/... and /health
+                         # We want Kong to expose them under /auth prefix.
+                         # Route 1: Key Management
+      - name: auth-service-api-keys
+        paths: ["/auth/api/keys"] # Public path: /auth/api/keys/...
+        methods: ["GET", "POST"]  # Add PUT, DELETE if used by key routes
+        strip_path: true # Strips /auth/api/keys, forwards /... to auth-service. Flask routes are /api/keys/...
+                         # This means the Flask app itself should have its routes at /... if this is stripped.
+                         # This is getting complex. Let's simplify.
+                         # If Flask app serves /api/keys/* and /health/* from its root:
+                         # Kong Service: url: http://auth-service:5000
+                         # Kong Route 1: paths: ["/auth/api/keys"], strip_path: true -> forwards / to auth-service. Flask needs to serve /api/keys.
+                         # This implies the Flask app's internal routes are /api/keys/...
+                         # If Kong path is /auth, and strip_path=true, then Flask app sees /api/keys, /health. This is cleaner.
+
+    # Corrected approach: Kong path is the public prefix. Flask app has its own internal prefixes.
+    # Kong strips its public prefix, then Flask matches its internal prefix.
+    # Public: /auth/api/keys/... -> Kong strips /auth -> Flask sees /api/keys/...
+    # Public: /auth/health      -> Kong strips /auth -> Flask sees /health
+    routes:
+      - name: auth-service-routes # Catch-all for /auth prefix
+        paths: ["/auth"]          # Public prefix
+        strip_path: true          # Removes /auth, forwards rest to auth-service
+                                  # So, /auth/api/keys -> /api/keys to Flask
+                                  # So, /auth/health    -> /health to Flask
+        methods: ["GET", "POST", "PUT", "DELETE"] # Cover all methods used by sub-paths
         plugins:
           - name: jwt
             enabled: true
@@ -23,11 +54,26 @@ services:
               redis_port: 6379
 
   - name: auth-service-grpc
-    url: grpc://auth-service:50051
+    url: grpc://auth-service:50051 # This seems correct
     routes:
-      - name: auth-grpc-route
-        protocols: ["grpc"]
-        paths: ["/auth.AuthService"]
+      - name: auth-keymanagement-grpc-route
+        protocols: ["grpc", "grpcs"]
+        paths: ["/auth.KeyManagementService"] # Path for KeyManagementService
+        # methods: [...] # Not typically needed for gRPC routes if path is specific enough
+        plugins: # Add plugins similar to UserManagementService for consistency
+          - name: jwt
+            enabled: true
+            config:
+              header_names: ["Authorization"] # Assuming gRPC JWT is passed in metadata/header
+          - name: rate-limiting
+            config:
+              minute: 60 # Example: Same as UserManagementService or adjust as needed
+              policy: redis
+              redis_host: redis
+              redis_port: 6379
+      - name: auth-usermanagement-grpc-route
+        protocols: ["grpc", "grpcs"]
+        paths: ["/auth.UserManagementService"] # Path for UserManagementService
         plugins:
           - name: jwt
             enabled: true
@@ -41,36 +87,44 @@ services:
               redis_port: 6379
 
   - name: data-service
-    url: http://data-service:8001
+    url: http://data-service:8001 # Internal address of the data service
     routes:
-      - name: data-route
-        paths: ["/data"]
-        methods: ["GET", "POST"]
-        strip_path: true
+      - name: data-api-route # Renamed for clarity
+        protocols: ["http", "https", "ws", "wss"] # Explicitly allow http(s) and ws(s)
+        paths: ["/api/v1/data"] # Public path prefix exposed by Kong
+        methods: ["GET", "POST"] # GET is used for WebSocket handshake too
+        strip_path: false # Forward /api/v1/data/... as is to the upstream service
+                          # This matches how the FastAPI app (data/main.py) includes its router.
 
   - name: strategy-service
-    url: http://strategy-service:8002
+    url: http://strategy-service:8002 # Internal address of the strategy service
     routes:
-      - name: strategy-route
-        paths: ["/strategies"]
+      - name: strategy-api-route # Renamed for clarity
+        paths: ["/api/strategies"] # Public path prefix exposed by Kong
         methods: ["GET", "POST", "PUT", "DELETE"]
-        strip_path: true
+        strip_path: false # Forward the path as is to the upstream service
+                          # So /api/strategies/xyz goes to http://strategy-service:8002/api/strategies/xyz
+                          # This matches how the FastAPI app (strategy/main.py) includes its router.
 
   - name: backtest-service
-    url: http://backtest-service:8003
+    url: http://backtest-service:8002 # Corrected port for backtest-service
     routes:
-      - name: backtest-route
-        paths: ["/backtests"]
-        methods: ["GET", "POST"]
-        strip_path: true
+      - name: backtest-api-route # Renamed for clarity
+        protocols: ["http", "https"] # Explicitly allow http(s)
+        paths: ["/api/backtest"] # Public path prefix exposed by Kong
+        methods: ["GET", "POST"] # Add other methods if used by backtest endpoints
+        strip_path: false # Forward /api/backtest/... as is to the upstream service
+                          # This matches how the FastAPI app (backtest/main.py) includes its router.
 
   - name: trade-service
-    url: http://trade-service:8004
+    url: http://trade-service:8005 # Corrected port for trade-service
     routes:
-      - name: trade-route
-        paths: ["/trades"]
-        methods: ["GET", "POST"]
-        strip_path: true
+      - name: trade-orders-route # Renamed for clarity
+        protocols: ["http", "https"] # Explicitly allow http(s)
+        paths: ["/api/trades/orders"] # Public path prefix exposed by Kong
+        methods: ["GET", "POST", "DELETE"] # Added DELETE
+        strip_path: false # Forward /api/trades/orders/... as is to the upstream service
+                          # This matches how the FastAPI app (trade/main.py) includes its router.
 
   - name: dashboard-service
     url: http://dashboard-service:3000

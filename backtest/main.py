@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+# Ensure Strategy model is registered with Base metadata for foreign key creation
+import strategy.models.strategy # This will execute strategy/models/strategy.py
 from fastapi.middleware.cors import CORSMiddleware
-from routers import backtest
+from prometheus_fastapi_instrumentator import Instrumentator # Added
+from .routers import backtest # Corrected import
 from .celery_config import celery_app
 from database.db import init_db
 import asyncio
@@ -30,6 +33,9 @@ app = FastAPI(
     title="Backtest Service",
     lifespan=lifespan
 )
+
+# Instrument the app with Prometheus
+Instrumentator().instrument(app).expose(app, include_in_schema=True, should_gzip=True)
 
 # CORS Configuration
 app.add_middleware(

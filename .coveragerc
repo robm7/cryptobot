@@ -1,0 +1,60 @@
+[run]
+source = ./
+branch = True
+omit =
+    */tests/*
+    */venv/*
+    */env/*
+    */virtualenv/*
+    */site-packages/*
+    */dist-packages/*
+    */docs/*
+    */examples/*
+    setup.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError
+    def __str__
+
+[html]
+directory = htmlcov
+title = Cryptobot Test Coverage Report
+
+[xml]
+output = coverage.xml
+
+[json]
+output = coverage.json
+
+[paths]
+source =
+    ./
+    /*/site-packages/
+
+[coverage:fail_under]
+# Default minimum coverage percentage
+total = 70
+
+[coverage:paths]
+# Critical components with higher coverage requirements
+order_execution = 
+    services/mcp/order_execution/*
+api_key_management = 
+    auth/key_manager.py
+    auth/routers/api_keys.py
+    auth/background_tasks.py
+authentication = 
+    auth/*
+
+[coverage:thresholds]
+# Set specific thresholds for critical components
+order_execution = 80
+api_key_management = 80
+authentication = 75

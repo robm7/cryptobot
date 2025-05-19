@@ -15,10 +15,10 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
 from fastapi import BackgroundTasks, Depends
 
-from database import get_db
-from key_manager import KeyManager
-from email_service import EmailService
-from models.user import User
+from database.db import get_db # Corrected import
+from .key_manager import KeyManager # Corrected import
+from .email_service import EmailService # Corrected import
+from .models.user import User # Corrected import
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -1,20 +1,29 @@
 """
-Order Execution Module
+Order Execution Module for Cryptobot
 
-This module provides interfaces and implementations for reliable order execution
-with various exchanges. It includes retry logic, circuit breaker patterns, and
-monitoring capabilities.
+This module provides reliable order execution capabilities with enhanced
+reliability patterns such as retry logic, circuit breaker, and reconciliation.
 """
 
 from .interfaces import OrderExecutionInterface
 from .basic_executor import BasicOrderExecutor
-from .reliable_executor import ReliableOrderExecutor, CircuitState, RetryConfig, CircuitBreakerConfig
+from .reliable_executor import ReliableOrderExecutor, CircuitState
+from .monitoring import (
+    log_execution_time,
+    track_metrics,
+    circuit_breaker_aware,
+    alert_on_failure,
+    retry_with_backoff
+)
 
 __all__ = [
     'OrderExecutionInterface',
     'BasicOrderExecutor',
     'ReliableOrderExecutor',
     'CircuitState',
-    'RetryConfig',
-    'CircuitBreakerConfig'
+    'log_execution_time',
+    'track_metrics',
+    'circuit_breaker_aware',
+    'alert_on_failure',
+    'retry_with_backoff'
 ]

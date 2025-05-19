@@ -5,8 +5,8 @@ from typing import Callable, Awaitable
 from datetime import datetime, timedelta
 import time
 
-from auth.redis_service import RateLimiter
-from config import settings
+from ..redis_service import RateLimiter # Corrected relative import
+from config import settings as global_settings_module # Alias global settings
 
 class RateLimitRoute(APIRoute):
     """Custom route class that applies rate limiting"""
@@ -16,7 +16,7 @@ class RateLimitRoute(APIRoute):
         
         async def custom_route_handler(request: Request) -> JSONResponse:
             # Skip rate limiting for certain paths
-            if request.url.path in settings.RATE_LIMIT_EXEMPT_PATHS:
+            if request.url.path in global_settings_module.settings.RATE_LIMIT_EXEMPT_PATHS:
                 return await original_route_handler(request)
                 
             # Apply rate limiting
@@ -29,7 +29,7 @@ async def rate_limit_middleware(request: Request, call_next):
     """Middleware version of rate limiter"""
     try:
         # Skip rate limiting for certain paths
-        if request.url.path in settings.RATE_LIMIT_EXEMPT_PATHS:
+        if request.url.path in global_settings_module.settings.RATE_LIMIT_EXEMPT_PATHS:
             return await call_next(request)
             
         # Apply rate limiting

@@ -2,7 +2,7 @@ from datetime import datetime
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
-from database import Base
+from database.db import Base # Corrected import
 
 class Session(Base):
     """Database model for user sessions"""

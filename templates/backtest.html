@@ -132,7 +132,45 @@
                     <p class="text-xl font-bold" id="win-rate">-</p>
                 </div>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Downside Volatility</h3>
+                    <p class="text-xl font-bold" id="downside-volatility">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Ulcer Index</h3>
+                    <p class="text-xl font-bold" id="ulcer-index">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Pain Index</h3>
+                    <p class="text-xl font-bold" id="pain-index">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Pain Ratio</h3>
+                    <p class="text-xl font-bold" id="pain-ratio">-</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Omega Ratio</h3>
+                    <p class="text-xl font-bold" id="omega-ratio">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Avg Drawdown Duration</h3>
+                    <p class="text-xl font-bold" id="avg-drawdown-duration">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Max Drawdown Duration</h3>
+                    <p class="text-xl font-bold" id="max-drawdown-duration">-</p>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <h3 class="text-sm text-gray-400">Total Trades</h3>
+                    <p class="text-xl font-bold" id="total-trades">-</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
                 <div class="bg-gray-700 p-4 rounded-lg">
                     <h3 class="text-sm text-gray-400">Avg Win</h3>
                     <p class="text-xl font-bold" id="avg-win">-</p>
@@ -156,8 +194,9 @@
                                 <th class="px-4 py-2 text-left">#</th>
                                 <th class="px-4 py-2 text-left">Start Date</th>
                                 <th class="px-4 py-2 text-left">End Date</th>
-                                <th class="px-4 py-2 text-left">Duration</th>
+                                <th class="px-4 py-2 text-left">Duration (days)</th>
                                 <th class="px-4 py-2 text-left">Max Drawdown</th>
+                                <th class="px-4 py-2 text-left">Max DD Date</th>
                             </tr>
                         </thead>
                         <tbody id="drawdown-table">

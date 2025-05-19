@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backtest-service
+  labels:
+    app: backtest-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backtest-service
+  template:
+    metadata:
+      labels:
+        app: backtest-service
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '8000'
+    spec:
+      containers:
+      - name: backtest-service
+        image: cryptobot/backtest-service:latest # Replace with your actual image name and tag
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PORT
+          value: "8000"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PYTHONPATH
+          value: "/app"
+        # Add other environment variables here if needed
+        livenessProbe:
+          httpGet:
+            path: /docs # Assuming /docs is available and indicates service health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /docs # Assuming /docs is available and indicates service readiness
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi" # Backtesting can be memory intensive
+            cpu: "500m"   # And CPU intensive
+          limits:
+            memory: "1Gi" # Allow more memory for backtesting
+            cpu: "1"      # Allow more CPU

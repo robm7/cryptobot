@@ -243,8 +243,15 @@ class Backtester:
             'max_drawdown': risk_metrics.get('max_drawdown'),
             'total_return': risk_metrics.get('total_return'),
             'volatility': risk_metrics.get('volatility'),
-            'win_rate': risk_metrics.get('win_rate'), # Placeholder
-            'profit_factor': risk_metrics.get('profit_factor'), # Placeholder
-            'total_trades': risk_metrics.get('total_trades')
-            # Add other relevant metrics from risk_metrics
+            'downside_volatility': risk_metrics.get('downside_volatility'),
+            'ulcer_index': risk_metrics.get('ulcer_index'),
+            'pain_index': risk_metrics.get('pain_index'),
+            'pain_ratio': risk_metrics.get('pain_ratio'),
+            'omega_ratio': risk_metrics.get('omega_ratio'),
+            'avg_drawdown_duration': risk_metrics.get('avg_drawdown_duration'),
+            'max_drawdown_duration': risk_metrics.get('max_drawdown_duration'),
+            'win_rate': risk_metrics.get('win_rate'),
+            'profit_factor': risk_metrics.get('profit_factor'),
+            'total_trades': risk_metrics.get('total_trades'),
+            'drawdown_periods': risk_metrics.get('drawdown_periods')
         }

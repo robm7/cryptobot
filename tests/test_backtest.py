@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select # Added import
 from datetime import datetime, timedelta
 from backtest.main import app
 from backtest.models.backtest import Backtest
@@ -114,3 +115,110 @@ async def test_results_not_ready(client: TestClient, db_session: AsyncSession):
     # Test results when not completed
     response = client.get(f"/api/backtest/results/{backtest.id}")
     assert response.status_code == 400
+
+@pytest.mark.asyncio
+async def test_optimize_strategy_parameters_includes_new_metrics(client: TestClient):
+    """
+    Test that the /optimize endpoint returns PerformanceMetrics
+    including sortino_ratio and calmar_ratio.
+    """
+    optimization_request_payload = {
+        "strategy_name": "TestStrategy",
+        "parameter_ranges": [
+            {"name": "param1", "start_value": 1.0, "end_value": 5.0, "step": 1.0},
+            {"name": "param2", "start_value": 0.1, "end_value": 0.5, "step": 0.1}
+        ],
+        "symbol": "BTC/USDT",
+        "timeframe": "1h",
+        "start_date": "2023-01-01T00:00:00Z",
+        "end_date": "2023-01-31T23:59:59Z"
+    }
+    response = client.post("/api/backtest/optimize", json=optimization_request_payload)
+    
+    assert response.status_code == 200
+    data = response.json()
+    
+    assert "results" in data
+    assert len(data["results"]) > 0  # Expecting multiple simulation runs
+    
+    for run_result in data["results"]:
+        assert "metrics" in run_result
+        metrics = run_result["metrics"]
+        assert "sortino_ratio" in metrics
+        assert "calmar_ratio" in metrics
+        assert isinstance(metrics["sortino_ratio"], float)
+        assert isinstance(metrics["calmar_ratio"], float)
+        # We can't assert specific dummy values as they are random,
+        # but checking type and presence is sufficient for this test.
+
+@pytest.mark.asyncio
+async def test_run_walk_forward_analysis_success(client: TestClient):
+    """Test successful walk-forward analysis run."""
+    request_payload = {
+        "strategy_name": "TestStrategyWF",
+        "parameter_ranges": [
+            {"name": "param1", "start_value": 10.0, "end_value": 20.0, "step": 5.0}, # 10, 15, 20 (3 values)
+            {"name": "param2", "start_value": 0.1, "end_value": 0.2, "step": 0.1}    # 0.1, 0.2 (2 values) -> 3*2=6 combos
+        ],
+        "symbol": "ETH/USDT",
+        "timeframe": "4h",
+        "total_start_date": "2023-01-01T00:00:00Z",
+        "total_end_date": "2023-03-31T23:59:59Z", # Approx 90 days
+        "in_sample_period_days": 30,
+        "out_of_sample_period_days": 15,
+        # num_folds will be calculated: 90 / (30+15) = 90 / 45 = 2 folds
+    }
+    response = client.post("/api/backtest/walkforward", json=request_payload)
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "walk_forward_id" in data
+    assert data["strategy_name"] == "TestStrategyWF"
+    assert len(data["fold_results"]) == 2 # Expect 2 folds
+
+    for fold_result in data["fold_results"]:
+        assert "fold_number" in fold_result
+        assert "in_sample_start_date" in fold_result
+        assert "out_of_sample_metrics" in fold_result
+        assert "optimized_parameters" in fold_result
+        # Each optimization run within a fold should have 6 combinations
+        assert len(fold_result["in_sample_optimization_results"]) >= 1 # Could be 6 if all params valid
+        # Check if metrics are present in out_of_sample_metrics
+        assert "sharpe_ratio" in fold_result["out_of_sample_metrics"]
+    
+    assert "aggregated_metrics" in data
+    assert "sharpe_ratio" in data["aggregated_metrics"]
+
+@pytest.mark.asyncio
+async def test_run_walk_forward_analysis_not_enough_data_for_fold(client: TestClient):
+    request_payload = {
+        "strategy_name": "TestStrategyWFShort",
+        "parameter_ranges": [{"name": "param1", "start_value": 1.0, "end_value": 2.0, "step": 1.0}],
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "total_start_date": "2023-01-01T00:00:00Z",
+        "total_end_date": "2023-01-10T23:59:59Z", # 10 days total
+        "in_sample_period_days": 7,
+        "out_of_sample_period_days": 5  # 7 + 5 = 12 days per fold, more than 10 available
+    }
+    response = client.post("/api/backtest/walkforward", json=request_payload)
+    assert response.status_code == 400
+    data = response.json()
+    assert "Total data range too short for even one fold" in data.get("detail", "")
+
+@pytest.mark.asyncio
+async def test_run_walk_forward_analysis_zero_fold_duration(client: TestClient):
+    request_payload = {
+        "strategy_name": "TestStrategyWFZero",
+        "parameter_ranges": [], # No optimization params
+        "symbol": "BTC/USDT",
+        "timeframe": "1d",
+        "total_start_date": "2023-01-01T00:00:00Z",
+        "total_end_date": "2023-01-30T23:59:59Z",
+        "in_sample_period_days": 0, # Invalid
+        "out_of_sample_period_days": 0 # Invalid
+    }
+    response = client.post("/api/backtest/walkforward", json=request_payload)
+    assert response.status_code == 400
+    data = response.json()
+    assert "In-sample and out-of-sample periods cannot both be zero" in data.get("detail", "")

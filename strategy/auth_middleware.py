@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 # Safe settings import
 try:
-    from config import settings
+    from .config import settings # Corrected import
     logger.info("Successfully imported settings from config")
     # Get auth service URL from settings or environment
     AUTH_SERVICE_URL = settings.AUTH_SERVICE_URL

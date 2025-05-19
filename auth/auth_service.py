@@ -16,9 +16,17 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 
 from config import settings
-from auth.database import get_db
+from database.db import get_db # Corrected import
 from auth.models.user import User, Role
 from auth.schemas.token import TokenType, TokenData
+
+# Import monitoring decorators
+from services.mcp.order_execution.monitoring import (
+    log_execution_time,
+    track_metrics,
+    alert_on_failure,
+    retry_with_backoff
+)
 
 def get_redis():
     """Get Redis client - mocked in tests"""
@@ -39,6 +47,9 @@ def get_password_hash(password: str) -> str:
     """Hash a password"""
     return pwd_context.hash(password)
 
+@log_execution_time
+@track_metrics("authentication")
+@alert_on_failure(alert_threshold=5, window_seconds=300)
 def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
     """Authenticate a user by username and password"""
     # First check cache
@@ -101,6 +112,8 @@ def create_token(
     
     return encoded_jwt
 
+@log_execution_time
+@track_metrics("token_creation")
 def create_token_pair(user: User) -> Dict[str, Any]:
     """Create access and refresh tokens for a user"""
     # Get user roles as strings
@@ -116,7 +129,7 @@ def create_token_pair(user: User) -> Dict[str, Any]:
     # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_token(
-        data=token_data, 
+        data=token_data,
         token_type=TokenType.ACCESS,
         expires_delta=access_token_expires
     )
@@ -124,7 +137,7 @@ def create_token_pair(user: User) -> Dict[str, Any]:
     # Create refresh token
     refresh_token_expires = timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
     refresh_token = create_token(
-        data=token_data, 
+        data=token_data,
         token_type=TokenType.REFRESH,
         expires_delta=refresh_token_expires
     )
@@ -137,6 +150,10 @@ def create_token_pair(user: User) -> Dict[str, Any]:
         "refresh_token_expires_in": int(refresh_token_expires.total_seconds())
     }
 
+@log_execution_time
+@track_metrics("token_refresh")
+@retry_with_backoff(max_retries=3, retryable_errors=["timeout", "connection"])
+@alert_on_failure(alert_threshold=5, window_seconds=300)
 def refresh_access_token(refresh_token: str, db: Session) -> Dict[str, Any]:
     """Create a new access token using a refresh token"""
     try:
@@ -152,8 +169,8 @@ def refresh_access_token(refresh_token: str, db: Session) -> Dict[str, Any]:
         try:
             # Verify the token
             payload = jwt.decode(
-                refresh_token, 
-                settings.SECRET_KEY, 
+                refresh_token,
+                settings.SECRET_KEY,
                 algorithms=[settings.ALGORITHM]
             )
             
@@ -204,7 +221,7 @@ def refresh_access_token(refresh_token: str, db: Session) -> Dict[str, Any]:
                     "sub": username,
                     "roles": user_roles,
                     "email": user.email
-                }, 
+                },
                 token_type=TokenType.ACCESS,
                 expires_delta=access_token_expires
             )
@@ -233,12 +250,15 @@ def refresh_access_token(refresh_token: str, db: Session) -> Dict[str, Any]:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+@log_execution_time
+@track_metrics("token_revocation")
+@alert_on_failure(alert_threshold=3, window_seconds=300)
 def revoke_token(token: str) -> bool:
     """Add a token to the blacklist"""
     try:
         # Decode token without verification to get expiration time
         payload = jwt.decode(
-            token, 
+            token,
             options={"verify_signature": False}
         )
         
@@ -256,16 +276,19 @@ def revoke_token(token: str) -> bool:
     except jwt.JWTError:
         return False
 
+@log_execution_time
+@track_metrics("token_validation")
+@alert_on_failure(alert_threshold=5, window_seconds=300)
 def get_current_user(
-    token: str = Depends(oauth2_scheme), 
+    token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ) -> User:
     """Get the current user from a JWT token"""
     try:
         # Verify the token
         payload = jwt.decode(
-            token, 
-            settings.SECRET_KEY, 
+            token,
+            settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
         
@@ -390,13 +413,16 @@ def generate_reset_token(email: str, db: Session) -> str:
     
     return reset_token
 
+@log_execution_time
+@track_metrics("reset_token_verification")
+@alert_on_failure(alert_threshold=3, window_seconds=300)
 def verify_reset_token(token: str) -> str:
     """Verify a password reset token and return email if valid"""
     try:
         # Verify the token
         payload = jwt.decode(
-            token, 
-            settings.SECRET_KEY, 
+            token,
+            settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
         
@@ -418,7 +444,6 @@ def update_password(email: str, new_password: str, db: Session) -> bool:
     if not user:
         raise ValueError("User not found")
     
-    # Check password complexity
     if len(new_password) < 8:
         raise ValueError("Password must be at least 8 characters long")
     
@@ -464,6 +489,9 @@ def generate_qr_code(uri: str) -> str:
     img.save(buffered, format="PNG")
     return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
+@log_execution_time
+@track_metrics("totp_verification")
+@alert_on_failure(alert_threshold=5, window_seconds=300)
 def verify_totp_code(secret: str, code: str) -> bool:
     """Verify a TOTP code against a secret"""
     totp = pyotp.TOTP(secret)

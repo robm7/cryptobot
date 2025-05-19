@@ -42,6 +42,19 @@ if (-not (Get-Command choco -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
+# Check if Memurai service is already running
+$memuraiService = Get-Service -Name "Memurai" -ErrorAction SilentlyContinue
+if ($memuraiService -and $memuraiService.Status -eq 'Running') {
+    Log "Memurai service is already running. Assuming Redis-compatible server is operational."
+    Log "Redis Host: $REDIS_HOST"
+    Log "Redis Port: $REDIS_PORT"
+    if ($REDIS_PASSWORD) { Log "Redis Password: $REDIS_PASSWORD" } else { Log "Redis Password: Not set" }
+    Log "Skipping further Redis setup steps as Memurai service is active."
+    Log "Redis setup considered complete due to active Memurai service." # Added for clarity
+    exit 0 # Exit successfully
+}
+Log "Memurai service not found or not running. Proceeding with Redis setup attempt..."
+
 # Install Redis
 Log "Installing Redis..."
 choco install -y redis-64

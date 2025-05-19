@@ -100,20 +100,50 @@ if [ "$setup_remote" = "y" ]; then
         repo_name="cryptobot"
     fi
     
-    git remote add origin "https://github.com/$username/$repo_name.git"
-    print_color "Remote 'origin' added." "green"
+    # Check if remote origin already exists
+    if git remote | grep -q "^origin$"; then
+        print_color "Remote 'origin' already exists." "yellow"
+        read -p "Do you want to (r)emove it, use a (d)ifferent name, or (s)kip? (r/d/s): " action
+        
+        if [ "$action" = "r" ]; then
+            git remote remove origin
+            git remote add origin "https://github.com/$username/$repo_name.git"
+            print_color "Remote 'origin' removed and re-added." "green"
+        elif [ "$action" = "d" ]; then
+            read -p "Enter a new remote name: " remote_name
+            git remote add "$remote_name" "https://github.com/$username/$repo_name.git"
+            print_color "Remote '$remote_name' added." "green"
+        else
+            print_color "Skipped adding remote." "yellow"
+        fi
+    else
+        git remote add origin "https://github.com/$username/$repo_name.git"
+        print_color "Remote 'origin' added." "green"
+    fi
     
     read -p "Do you want to push to GitHub now? (y/n): " push_now
     if [ "$push_now" = "y" ]; then
-        git push -u origin master
+        # Rename branch from master to main if needed
+        current_branch=$(git branch --show-current)
+        if [ "$current_branch" = "master" ]; then
+            print_color "Renaming branch from 'master' to 'main'..." "yellow"
+            git branch -M main
+            print_color "Branch renamed to 'main'." "green"
+            git push -u origin main
+        else
+            git push -u origin "$current_branch"
+        fi
         print_color "Repository pushed to GitHub successfully!" "green"
     else
-        print_color "You can push to GitHub later with: git push -u origin master" "yellow"
+        print_color "You can push to GitHub later with:" "yellow"
+        print_color "git branch -M main  # Rename branch from master to main" "yellow"
+        print_color "git push -u origin main" "yellow"
     fi
 else
     print_color "You can set up the GitHub remote later with:" "yellow"
     print_color "git remote add origin https://github.com/yourusername/cryptobot.git" "yellow"
-    print_color "git push -u origin master" "yellow"
+    print_color "git branch -M main  # Rename branch from master to main" "yellow"
+    print_color "git push -u origin main" "yellow"
 fi
 
 # Final status

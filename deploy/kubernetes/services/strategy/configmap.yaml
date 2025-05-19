@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: strategy-config
+  labels:
+    app: cryptobot
+    tier: backend
+    service: strategy
+data:
+  # Database settings
+  DATABASE_URL: "postgresql://user:password@strategy-db:5432/strategy"
+  DEBUG: "false"
+  
+  # Auth settings
+  AUTH_SERVICE_URL: "http://auth-service:8000"
+  TOKEN_CACHE_TTL: "60"
+  
+  # Role-based access control
+  ADMIN_ROLE: "admin"
+  TRADER_ROLE: "trader"
+  VIEWER_ROLE: "viewer"
+  
+  # Environment
+  TESTING: "false"
+  ENVIRONMENT: "production"
+  LOG_LEVEL: "INFO"

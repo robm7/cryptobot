@@ -84,6 +84,9 @@ BACKTEST_SERVICE_PORT=8020
 TRADE_SERVICE_PORT=8030
 DATA_SERVICE_PORT=8001
 
+# Full Database URL (for SQLAlchemy, assuming asyncpg driver)
+DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+
 # Logging
 LOG_LEVEL=INFO
 LOG_DIR=./logs

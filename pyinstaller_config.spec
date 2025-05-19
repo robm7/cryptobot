@@ -13,7 +13,8 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 block_cipher = None
 
 # Add project root to path
-project_root = os.path.abspath(os.path.dirname(__file__))
+# Use os.getcwd() instead of __file__ since PyInstaller doesn't define __file__ when running the spec
+project_root = os.path.abspath(os.getcwd())
 sys.path.insert(0, project_root)
 
 # Collect all necessary data files

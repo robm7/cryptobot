@@ -1,4 +1,5 @@
-from pydantic import BaseSettings, PostgresDsn, validator
+from pydantic_settings import BaseSettings # Corrected import for Pydantic v2
+from pydantic import PostgresDsn, validator
 from typing import Optional, Union, Dict, Any
 import os
 import logging
@@ -7,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 class Settings(BaseSettings):
     # Database settings
-    DATABASE_URL: Optional[PostgresDsn] = None
+    DATABASE_URL: Optional[str] = None # Changed from PostgresDsn to str to allow SQLite URLs from .env
     DEBUG: bool = False
     
     # Auth settings
@@ -41,6 +42,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Allow and ignore extra fields from .env
 
 # Try to load settings, with fallback for testing
 try:

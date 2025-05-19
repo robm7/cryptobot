@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, Optional, Union, List, Tuple
 
 def calculate_sortino_ratio(returns, risk_free_rate=0.0, periods_per_year=252):
     """
@@ -147,6 +147,160 @@ def calculate_profit_factor(returns: pd.Series) -> float:
     
     return profits / losses
 
+def calculate_downside_volatility(returns: pd.Series, mar: float = 0.0, periods_per_year: int = 252) -> float:
+    """
+    Calculate downside volatility (semi-deviation) for a series of returns.
+    
+    Args:
+        returns (pd.Series): Series of returns
+        mar (float): Minimum acceptable return (default 0)
+        periods_per_year (int): Number of periods in a year (252 for daily data)
+        
+    Returns:
+        float: Annualized downside volatility
+    """
+    # Calculate downside returns (returns below MAR)
+    downside_returns = returns[returns < mar] - mar
+    
+    if len(downside_returns) == 0:
+        return 0.0
+    
+    # Calculate downside deviation
+    downside_vol = np.sqrt(np.mean(downside_returns ** 2) * periods_per_year)
+    
+    return downside_vol
+
+def calculate_ulcer_index(returns: pd.Series, periods_per_year: int = 252) -> float:
+    """
+    Calculate the Ulcer Index, which measures downside risk by considering
+    both the depth and duration of drawdowns.
+    
+    Args:
+        returns (pd.Series): Series of returns
+        periods_per_year (int): Number of periods in a year (252 for daily data)
+        
+    Returns:
+        float: Ulcer Index
+    """
+    # Calculate cumulative returns
+    cum_returns = (1 + returns).cumprod()
+    
+    # Calculate drawdown series
+    rolling_max = cum_returns.expanding().max()
+    drawdowns = cum_returns / rolling_max - 1
+    
+    # Calculate squared drawdowns
+    squared_drawdowns = drawdowns ** 2
+    
+    # Calculate Ulcer Index
+    ulcer_index = np.sqrt(np.mean(squared_drawdowns))
+    
+    return ulcer_index
+
+def calculate_pain_index(returns: pd.Series) -> float:
+    """
+    Calculate the Pain Index, which is the average of all drawdowns over the period.
+    
+    Args:
+        returns (pd.Series): Series of returns
+        
+    Returns:
+        float: Pain Index
+    """
+    # Calculate cumulative returns
+    cum_returns = (1 + returns).cumprod()
+    
+    # Calculate drawdown series
+    rolling_max = cum_returns.expanding().max()
+    drawdowns = cum_returns / rolling_max - 1
+    
+    # Calculate Pain Index (average of absolute drawdowns)
+    pain_index = np.abs(drawdowns).mean()
+    
+    return pain_index
+
+def calculate_pain_ratio(returns: pd.Series, risk_free_rate: float = 0.0, periods_per_year: int = 252) -> float:
+    """
+    Calculate the Pain Ratio, which is the annualized return over the Pain Index.
+    
+    Args:
+        returns (pd.Series): Series of returns
+        risk_free_rate (float): Annual risk-free rate
+        periods_per_year (int): Number of periods in a year (252 for daily data)
+        
+    Returns:
+        float: Pain Ratio
+    """
+    # Calculate Pain Index
+    pain_index = calculate_pain_index(returns)
+    
+    if pain_index == 0:
+        return np.inf if returns.mean() > 0 else -np.inf
+    
+    # Calculate annualized return
+    total_return = (1 + returns).prod() - 1
+    annualized_return = (1 + total_return) ** (periods_per_year/len(returns)) - 1
+    
+    # Calculate excess return
+    excess_return = annualized_return - risk_free_rate
+    
+    # Calculate Pain Ratio
+    pain_ratio = excess_return / pain_index
+    
+    return pain_ratio
+
+def identify_drawdown_periods(returns: pd.Series) -> List[Dict[str, Any]]:
+    """
+    Identify and analyze drawdown periods.
+    
+    Args:
+        returns (pd.Series): Series of returns
+        
+    Returns:
+        List[Dict]: List of drawdown periods with start date, end date, duration, and max drawdown
+    """
+    # Calculate cumulative returns
+    cum_returns = (1 + returns).cumprod()
+    
+    # Calculate drawdown series
+    rolling_max = cum_returns.expanding().max()
+    drawdowns = cum_returns / rolling_max - 1
+    
+    # Identify drawdown periods
+    in_drawdown = False
+    drawdown_periods = []
+    current_period = {}
+    
+    for date, value in drawdowns.items():
+        if not in_drawdown and value < 0:
+            # Start of a drawdown period
+            in_drawdown = True
+            current_period = {
+                'start_date': date,
+                'max_drawdown': value,
+                'max_drawdown_date': date
+            }
+        elif in_drawdown:
+            if value < current_period['max_drawdown']:
+                # New maximum drawdown within the current period
+                current_period['max_drawdown'] = value
+                current_period['max_drawdown_date'] = date
+            
+            if value == 0:
+                # End of a drawdown period
+                in_drawdown = False
+                current_period['end_date'] = date
+                current_period['duration'] = (date - current_period['start_date']).days
+                drawdown_periods.append(current_period)
+    
+    # Handle case where we're still in a drawdown at the end of the series
+    if in_drawdown:
+        current_period['end_date'] = drawdowns.index[-1]
+        current_period['duration'] = (current_period['end_date'] - current_period['start_date']).days
+        drawdown_periods.append(current_period)
+    
+    return drawdown_periods
+
 def calculate_risk_metrics(returns: pd.Series, risk_free_rate: float = 0.0) -> Dict[str, float]:
     """
     Calculate comprehensive risk metrics for a trading strategy.
@@ -188,6 +342,24 @@ def calculate_risk_metrics(returns: pd.Series, risk_free_rate: float = 0.0) -> D
     max_consecutive_losses = calculate_max_consecutive(returns, win=False)
     profit_factor = calculate_profit_factor(returns)
     
+    # Calculate advanced risk metrics
+    downside_volatility = calculate_downside_volatility(returns, risk_free_rate)
+    ulcer_index = calculate_ulcer_index(returns)
+    pain_index = calculate_pain_index(returns)
+    pain_ratio = calculate_pain_ratio(returns, risk_free_rate)
+    
+    # Identify drawdown periods
+    drawdown_periods = identify_drawdown_periods(returns)
+    avg_drawdown_duration = np.mean([period['duration'] for period in drawdown_periods]) if drawdown_periods else 0
+    max_drawdown_duration = max([period['duration'] for period in drawdown_periods]) if drawdown_periods else 0
+    
+    # Calculate risk-adjusted returns
+    # Omega ratio (probability-weighted ratio of gains versus losses)
+    threshold = risk_free_rate / 252  # Daily minimum acceptable return
+    gains = returns[returns > threshold] - threshold
+    losses = threshold - returns[returns < threshold]
+    omega_ratio = gains.sum() / losses.sum() if losses.sum() > 0 else np.inf
+    
     return {
         'total_return': total_return,
         'annualized_return': annualized_return,
@@ -196,12 +368,48 @@ def calculate_risk_metrics(returns: pd.Series, risk_free_rate: float = 0.0) -> D
         'calmar_ratio': calmar,
         'sharpe_ratio': sharpe,
         'volatility': volatility,
+        'downside_volatility': downside_volatility,
+        'ulcer_index': ulcer_index,
+        'pain_index': pain_index,
+        'pain_ratio': pain_ratio,
+        'omega_ratio': omega_ratio,
+        'avg_drawdown_duration': avg_drawdown_duration,
+        'max_drawdown_duration': max_drawdown_duration,
         'avg_daily_return': returns.mean(),
         'win_rate': len(returns[returns > 0]) / len(returns),
         'max_consecutive_wins': max_consecutive_wins,
         'max_consecutive_losses': max_consecutive_losses,
-        'profit_factor': profit_factor
+        'profit_factor': profit_factor,
+        'drawdown_periods': drawdown_periods
     }
+
+def calculate_max_drawdown(equity_curve: Union[List[float], np.ndarray, pd.Series]) -> float:
+    """
+    Calculate the maximum drawdown from an equity curve.
+    
+    Args:
+        equity_curve: Array-like of equity values over time
+        
+    Returns:
+        float: Maximum drawdown as a positive decimal (e.g., 0.25 for 25% drawdown)
+    """
+    if len(equity_curve) <= 1:
+        return 0.0
+        
+    # Convert to numpy array if needed
+    if isinstance(equity_curve, (list, pd.Series)):
+        equity_array = np.array(equity_curve)
+    else:
+        equity_array = equity_curve
+        
+    # Calculate running maximum
+    running_max = np.maximum.accumulate(equity_array)
+    
+    # Calculate drawdowns
+    drawdowns = (running_max - equity_array) / running_max
+    
+    # Return maximum drawdown
+    return float(np.max(drawdowns))
 
 def get_historical_volatility(symbol: str, lookback_days: int = 30) -> float:
     """
@@ -221,6 +429,11 @@ def get_historical_volatility(symbol: str, lookback_days: int = 30) -> float:
         'ETH/USDT': 0.55,
         'SOL/USDT': 0.75,
         'ADA/USDT': 0.85,
+        'XRP/USDT': 0.70,
+        'DOT/USDT': 0.80,
+        'DOGE/USDT': 0.90,
+        'AVAX/USDT': 0.75,
+        'MATIC/USDT': 0.72,
         'DEFAULT': 0.50
     }
     

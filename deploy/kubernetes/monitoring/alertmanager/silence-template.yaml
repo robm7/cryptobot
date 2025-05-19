@@ -1,0 +1,120 @@
+# Silence Template for AlertManager
+#
+# This file provides examples of how to create silences for alerts during maintenance periods.
+# These are not Kubernetes resources but examples of API requests to the AlertManager API.
+#
+# To create a silence, you can use the AlertManager UI or the API:
+# curl -X POST -H "Content-Type: application/json" -d @silence.json http://alertmanager:9093/api/v2/silences
+
+# Example 1: Silence all alerts for a specific service during maintenance
+# silence.json
+{
+  "matchers": [
+    {
+      "name": "service",
+      "value": "trade-service",
+      "isRegex": false
+    }
+  ],
+  "startsAt": "2025-05-15T21:00:00Z",
+  "endsAt": "2025-05-15T23:00:00Z",
+  "createdBy": "maintenance-team",
+  "comment": "Scheduled maintenance for trade service"
+}
+
+# Example 2: Silence specific alert by name
+# silence.json
+{
+  "matchers": [
+    {
+      "name": "alertname",
+      "value": "HighCPUUsage",
+      "isRegex": false
+    }
+  ],
+  "startsAt": "2025-05-16T01:00:00Z",
+  "endsAt": "2025-05-16T03:00:00Z",
+  "createdBy": "ops-team",
+  "comment": "Expected high CPU during batch processing"
+}
+
+# Example 3: Silence alerts for a specific node
+# silence.json
+{
+  "matchers": [
+    {
+      "name": "instance",
+      "value": "worker-node-01",
+      "isRegex": false
+    }
+  ],
+  "startsAt": "2025-05-17T10:00:00Z",
+  "endsAt": "2025-05-17T12:00:00Z",
+  "createdBy": "infrastructure-team",
+  "comment": "Node maintenance - hardware upgrade"
+}
+
+# Example 4: Silence alerts for a specific team during on-call handover
+# silence.json
+{
+  "matchers": [
+    {
+      "name": "team",
+      "value": "data",
+      "isRegex": false
+    }
+  ],
+  "startsAt": "2025-05-18T08:00:00Z",
+  "endsAt": "2025-05-18T09:00:00Z",
+  "createdBy": "team-lead",
+  "comment": "On-call handover period"
+}
+
+# Example 5: Silence multiple specific alerts using regex
+# silence.json
+{
+  "matchers": [
+    {
+      "name": "alertname",
+      "value": "(HighMemoryUsage|HighCPUUsage)",
+      "isRegex": true
+    },
+    {
+      "name": "severity",
+      "value": "warning",
+      "isRegex": false
+    }
+  ],
+  "startsAt": "2025-05-19T15:00:00Z",
+  "endsAt": "2025-05-19T17:00:00Z",
+  "createdBy": "devops-team",
+  "comment": "Expected resource spikes during data migration"
+}
+
+# Example 6: Silence all critical alerts during major deployment
+# silence.json
+{
+  "matchers": [
+    {
+      "name": "severity",
+      "value": "critical",
+      "isRegex": false
+    }
+  ],
+  "startsAt": "2025-05-20T22:00:00Z",
+  "endsAt": "2025-05-21T02:00:00Z",
+  "createdBy": "release-manager",
+  "comment": "Major system upgrade - expected instability"
+}
+
+# To create these silences programmatically, you can use a script like:
+# #!/bin/bash
+# 
+# # Set the AlertManager URL
+# ALERTMANAGER_URL="http://alertmanager:9093/api/v2/silences"
+# 
+# # Read the silence JSON file
+# SILENCE_JSON=$(cat silence.json)
+# 
+# # Create the silence
+# curl -X POST -H "Content-Type: application/json" -d "$SILENCE_JSON" $ALERTMANAGER_URL

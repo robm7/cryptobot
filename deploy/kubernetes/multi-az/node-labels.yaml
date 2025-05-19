@@ -1,0 +1,87 @@
+# Node Labels for Multi-AZ Deployment
+# This file contains example commands for labeling nodes with their availability zone
+# and node selector configurations for multi-AZ deployments.
+
+# ===== Example Commands for Labeling Nodes =====
+
+# AWS Example:
+# Label nodes with their AWS availability zone
+# Replace <node-name> with the actual node name
+# Replace <zone> with the actual AWS availability zone (e.g., us-east-1a, us-east-1b, us-east-1c)
+#
+# kubectl label node <node-name> topology.kubernetes.io/zone=<zone>
+#
+# Example for AWS:
+# kubectl label node ip-10-0-1-101.ec2.internal topology.kubernetes.io/zone=us-east-1a
+# kubectl label node ip-10-0-2-102.ec2.internal topology.kubernetes.io/zone=us-east-1b
+# kubectl label node ip-10-0-3-103.ec2.internal topology.kubernetes.io/zone=us-east-1c
+
+# Azure Example:
+# Label nodes with their Azure availability zone
+# Replace <node-name> with the actual node name
+# Replace <zone> with the actual Azure availability zone (e.g., 1, 2, 3)
+#
+# kubectl label node <node-name> topology.kubernetes.io/zone=<zone>
+#
+# Example for Azure:
+# kubectl label node aks-node-1 topology.kubernetes.io/zone=1
+# kubectl label node aks-node-2 topology.kubernetes.io/zone=2
+# kubectl label node aks-node-3 topology.kubernetes.io/zone=3
+
+# GCP Example:
+# Label nodes with their GCP availability zone
+# Replace <node-name> with the actual node name
+# Replace <zone> with the actual GCP zone (e.g., us-central1-a, us-central1-b, us-central1-c)
+#
+# kubectl label node <node-name> topology.kubernetes.io/zone=<zone>
+#
+# Example for GCP:
+# kubectl label node gke-cluster-1-node-1 topology.kubernetes.io/zone=us-central1-a
+# kubectl label node gke-cluster-1-node-2 topology.kubernetes.io/zone=us-central1-b
+# kubectl label node gke-cluster-1-node-3 topology.kubernetes.io/zone=us-central1-c
+
+# ===== Node Selector Configurations =====
+
+# Example node selector configuration for specific zone deployment
+# This can be added to a deployment spec if you want to target specific zones
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zone-specific-deployment-example
+spec:
+  template:
+    spec:
+      nodeSelector:
+        topology.kubernetes.io/zone: us-east-1a  # Replace with your target zone
+
+# Example node selector configuration for specific region deployment
+# This can be added to a deployment spec if you want to target specific regions
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: region-specific-deployment-example
+spec:
+  template:
+    spec:
+      nodeSelector:
+        topology.kubernetes.io/region: us-east-1  # Replace with your target region
+
+# Example node selector configuration for specific node type
+# This can be added to a deployment spec if you want to target specific node types
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: node-type-specific-deployment-example
+spec:
+  template:
+    spec:
+      nodeSelector:
+        node.kubernetes.io/instance-type: m5.large  # Replace with your target instance type
+
+# ===== Verifying Node Labels =====
+
+# To verify that nodes are correctly labeled with their availability zones, run:
+# kubectl get nodes --show-labels | grep topology.kubernetes.io/zone
+
+# To get a list of nodes grouped by availability zone, run:
+# kubectl get nodes -L topology.kubernetes.io/zone

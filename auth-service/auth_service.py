@@ -2,19 +2,19 @@ import grpc
 from concurrent import futures
 from datetime import datetime
 from typing import List, Optional
-from auth_pb2 import (
+from .auth_pb2 import ( # Corrected import
     KeyResponse,
     ListKeysResponse,
     RevokeKeyResponse
 )
-from auth_pb2_grpc import (
+from .auth_pb2_grpc import ( # Corrected import
     KeyManagementServiceServicer,
     add_KeyManagementServiceServicer_to_server,
     add_UserManagementServiceServicer_to_server
 )
-from key_manager import KeyManager
-from user_service import UserService
-from user_manager import UserManager
+from .key_manager import KeyManager # Corrected import
+from .user_service import UserService # Corrected import
+from .user_manager import UserManager # Corrected import
 
 class AuthService(KeyManagementServiceServicer):
     def __init__(self, redis_client, key_manager: Optional[KeyManager] = None) -> None:

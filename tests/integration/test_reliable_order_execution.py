@@ -285,3 +285,65 @@ async def test_integration_reconciliation(executor, exchange_gateway):
         
         # Verify logging occurred
         assert mock_logger.info.called
+
+@pytest.mark.asyncio
+async def test_integration_order_cancellation(executor, exchange_gateway):
+    """Test order cancellation integration"""
+    # Execute an order first
+    order_params = {
+        "symbol": "BTC/USD",
+        "side": "buy",
+        "type": "limit",
+        "amount": 1.0,
+        "price": 50000.0
+    }
+    order_id = await executor.execute_order(order_params)
+    assert order_id is not None
+
+    # Cancel the order
+    await executor.cancel_order(order_id)
+
+    # Verify order was cancelled in the exchange
+    assert exchange_gateway.orders[order_id]['status'] == 'cancelled'
+    assert ('cancel_order', order_id) in exchange_gateway.calls
+
+@pytest.mark.asyncio
+async def test_integration_get_order_status(executor, exchange_gateway):
+    """Test get order status integration"""
+    # Execute an order first
+    order_params = {
+        "symbol": "BTC/USD",
+        "side": "buy",
+        "type": "limit",
+        "amount": 1.0,
+        "price": 50000.0
+    }
+    order_id = await executor.execute_order(order_params)
+    assert order_id is not None
+
+    # Get order status
+    status = await executor.get_order_status(order_id)
+
+    # Verify order status is filled
+    assert status['status'] == 'filled'
+    assert ('get_order_status', order_id) in exchange_gateway.calls
+
+@pytest.mark.asyncio
+async def test_integration_configuration(executor):
+    """Test configuration integration"""
+    # Configure the executor
+    config = {
+        "retry": {
+            "max_retries": 5,
+            "initial_delay": 0.1
+        },
+        "circuit_breaker": {
+            "error_threshold": 10
+        }
+    }
+    await executor.configure(config)
+
+    # Verify configuration was applied
+    assert executor.retry_config.max_retries == 5
+    assert executor.retry_config.initial_delay == 0.1
+    assert executor.circuit_config.error_threshold == 10

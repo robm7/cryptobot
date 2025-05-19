@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-config
+  labels:
+    app: cryptobot
+    tier: frontend
+    service: dashboard
+data:
+  # API configuration
+  API_BASE_URL: "https://api.cryptobot.example.com"
+  WS_URL: "wss://ws.cryptobot.example.com"
+  
+  # Environment configuration
+  NODE_ENV: "production"
+  NEXT_TELEMETRY_DISABLED: "1"
+  
+  # Security configuration (replace with actual values in production)
+  JWT_SECRET: "replace-with-actual-secret-in-production"

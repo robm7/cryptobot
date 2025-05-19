@@ -14,28 +14,41 @@ class BinanceWebSocket:
     
     def __init__(self):
         # Metrics
-        self._metrics = {
-            'rate_limit_events': Counter(
-                'websocket_rate_limit_events_total',
-                'Total rate limit events',
-                ['endpoint']
-            ),
-            'circuit_state': Gauge(
-                'websocket_circuit_state',
-                'Current circuit breaker state',
-                ['state']
-            ),
-            'request_errors': Counter(
-                'websocket_request_errors_total',
-                'Total request errors',
-                ['error_type']
-            ),
-            'request_latency': Histogram(
-                'websocket_request_latency_seconds',
-                'Request latency distribution',
-                buckets=[0.1, 0.5, 1, 2, 5]
-            )
-        }
+        try:
+            self._metrics = {
+                'rate_limit_events': Counter(
+                    'websocket_rate_limit_events_total',
+                    'Total rate limit events',
+                    ['endpoint'],
+                    registry=None  # Don't register with default registry
+                ),
+                'circuit_state': Gauge(
+                    'websocket_circuit_state',
+                    'Current circuit breaker state',
+                    ['state'],
+                    registry=None  # Don't register with default registry
+                ),
+                'request_errors': Counter(
+                    'websocket_request_errors_total',
+                    'Total request errors',
+                    ['error_type'],
+                    registry=None  # Don't register with default registry
+                ),
+                'request_latency': Histogram(
+                    'websocket_request_latency_seconds',
+                    'Request latency distribution',
+                    buckets=[0.1, 0.5, 1, 2, 5],
+                    registry=None  # Don't register with default registry
+                )
+            }
+        except ValueError:
+            # If metrics already exist, just use empty placeholders
+            self._metrics = {
+                'rate_limit_events': None,
+                'circuit_state': None,
+                'request_errors': None,
+                'request_latency': None
+            }
 
         self._ws: Optional[ClientWebSocketResponse] = None
         self._session = aiohttp.ClientSession()
@@ -86,7 +99,8 @@ class BinanceWebSocket:
         if limit['remaining'] <= 0:
             retry_after = max(0, limit['reset'] - now)
             logging.warning(f"Rate limited on {endpoint}, retrying in {retry_after:.1f}s")
-            self._metrics['rate_limit_events'].labels(endpoint=endpoint).inc()
+            if self._metrics['rate_limit_events']:
+                self._metrics['rate_limit_events'].labels(endpoint=endpoint).inc()
             await asyncio.sleep(retry_after)
             return False
             
@@ -171,9 +185,10 @@ class BinanceWebSocket:
     async def _reconnect(self):
         """Handle reconnection with circuit breaker"""
         # Update circuit state metrics
-        self._metrics['circuit_state'].labels(state='closed').set(1 if self._circuit_state == 'closed' else 0)
-        self._metrics['circuit_state'].labels(state='open').set(1 if self._circuit_state == 'open' else 0)
-        self._metrics['circuit_state'].labels(state='half-open').set(1 if self._circuit_state == 'half-open' else 0)
+        if self._metrics['circuit_state']:
+            self._metrics['circuit_state'].labels(state='closed').set(1 if self._circuit_state == 'closed' else 0)
+            self._metrics['circuit_state'].labels(state='open').set(1 if self._circuit_state == 'open' else 0)
+            self._metrics['circuit_state'].labels(state='half-open').set(1 if self._circuit_state == 'half-open' else 0)
         now = time.time()
         
         if self._circuit_state == 'open':

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trade-service
+  labels:
+    app: trade-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trade-service
+  template:
+    metadata:
+      labels:
+        app: trade-service
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/path: '/metrics'
+        prometheus.io/port: '8000'
+    spec:
+      containers:
+      - name: trade-service
+        image: cryptobot/trade-service:latest # Replace with your actual image name and tag
+        ports:
+        - containerPort: 8000
+        env:
+        - name: TRADE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: trade-secrets # Assuming a secret named 'trade-secrets'
+              key: TRADE_API_KEY
+        - name: EXCHANGE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: exchange-secrets # Assuming a secret named 'exchange-secrets'
+              key: EXCHANGE_API_KEY
+        - name: EXCHANGE_API_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: exchange-secrets
+              key: EXCHANGE_API_SECRET
+        - name: EXCHANGE_PASSPHRASE
+          valueFrom:
+            secretKeyRef:
+              name: exchange-secrets # Assuming Coinbase Pro passphrase is in the same secret
+              key: EXCHANGE_PASSPHRASE
+              optional: true # Passphrase might be optional depending on the exchange
+        livenessProbe:
+          httpGet:
+            path: /api/trades/health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /api/trades/health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

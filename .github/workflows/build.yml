@@ -1,36 +1,17 @@
-name: Build Executables
+name: Build and Test
 
 on:
   push:
-    tags:
-      - 'v*'
-    branches:
-      - main
-      - release/*
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
   pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      build_type:
-        description: 'Build type (release or debug)'
-        required: true
-        default: 'release'
-        type: choice
-        options:
-          - release
-          - debug
+    branches: [ main, master, develop ]
 
 jobs:
   build-windows:
-    name: Build Windows Executable
     runs-on: windows-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v3
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -45,79 +26,27 @@ jobs:
           pip install -r requirements-dev.txt
           pip install pyinstaller
       
-      - name: Run tests
+      - name: Build Windows executable
         run: |
-          pytest tests/ -v
+          powershell -ExecutionPolicy Bypass -File .\scripts\build_windows.ps1 -Clean -Optimize
       
-      - name: Build executable
+      - name: Test Windows executable
         run: |
-          $buildType = "${{ github.event.inputs.build_type }}"
-          if ($buildType -eq "") {
-            if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
-              $buildType = "release"
-            } else {
-              $buildType = "debug"
-            }
-          }
-          
-          if ($buildType -eq "release") {
-            .\scripts\build_windows.ps1 -Clean -Optimize
-          } else {
-            .\scripts\build_windows.ps1 -Clean
-          }
+          python scripts/test_distribution.py --platform windows
       
-      - name: Get version
-        id: get_version
-        run: |
-          $version = "dev"
-          if ("${{ github.ref }}".StartsWith("refs/tags/v")) {
-            $version = "${{ github.ref }}".Substring(11)
-          }
-          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
-      
-      - name: Rename artifacts
-        run: |
-          $version = "${{ steps.get_version.outputs.VERSION }}"
-          Move-Item -Path "dist\cryptobot-windows.zip" -Destination "dist\cryptobot-windows-$version.zip"
-          Move-Item -Path "dist\cryptobot_onefile.exe" -Destination "dist\cryptobot-windows-$version.exe"
-      
-      - name: Upload directory-based executable
+      - name: Upload Windows executable
         uses: actions/upload-artifact@v3
         with:
-          name: cryptobot-windows-${{ steps.get_version.outputs.VERSION }}
-          path: dist/cryptobot/
-      
-      - name: Upload ZIP archive
-        uses: actions/upload-artifact@v3
-        with:
-          name: cryptobot-windows-${{ steps.get_version.outputs.VERSION }}-zip
-          path: dist/cryptobot-windows-${{ steps.get_version.outputs.VERSION }}.zip
-      
-      - name: Upload single-file executable
-        uses: actions/upload-artifact@v3
-        with:
-          name: cryptobot-windows-${{ steps.get_version.outputs.VERSION }}-exe
-          path: dist/cryptobot-windows-${{ steps.get_version.outputs.VERSION }}.exe
-      
-      - name: Create release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: |
-            dist/cryptobot-windows-${{ steps.get_version.outputs.VERSION }}.zip
-            dist/cryptobot-windows-${{ steps.get_version.outputs.VERSION }}.exe
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: cryptobot-windows
+          path: |
+            dist/cryptobot-windows.zip
+            dist/cryptobot_onefile.exe
+          if-no-files-found: error
 
   build-linux:
-    name: Build Linux Executable
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+      - uses: actions/checkout@v3
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -134,121 +63,85 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y upx
       
-      - name: Run tests
+      - name: Build Linux executable
         run: |
-          pytest tests/ -v
+          chmod +x scripts/build_linux.sh
+          ./scripts/build_linux.sh --clean --optimize
       
-      - name: Build executable
+      - name: Test Linux executable
         run: |
-          BUILD_TYPE="${{ github.event.inputs.build_type }}"
-          if [ -z "$BUILD_TYPE" ]; then
-            if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-              BUILD_TYPE="release"
-            else
-              BUILD_TYPE="debug"
-            fi
-          fi
-          
-          if [ "$BUILD_TYPE" == "release" ]; then
-            chmod +x scripts/build_linux.sh
-            ./scripts/build_linux.sh --clean --optimize
-          else
-            chmod +x scripts/build_linux.sh
-            ./scripts/build_linux.sh --clean
-          fi
+          python scripts/test_distribution.py --platform linux
       
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION="dev"
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            VERSION=$(echo "${{ github.ref }}" | sed 's|refs/tags/v||')
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Rename artifacts
-        run: |
-          VERSION="${{ steps.get_version.outputs.VERSION }}"
-          mv dist/cryptobot-linux.tar.gz dist/cryptobot-linux-$VERSION.tar.gz
-          mv dist/cryptobot_onefile dist/cryptobot-linux-$VERSION
-      
-      - name: Upload directory-based executable
+      - name: Upload Linux executable
         uses: actions/upload-artifact@v3
         with:
-          name: cryptobot-linux-${{ steps.get_version.outputs.VERSION }}
-          path: dist/cryptobot/
+          name: cryptobot-linux
+          path: |
+            dist/cryptobot-linux.tar.gz
+            dist/cryptobot_onefile
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
       
-      - name: Upload tarball archive
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pip install pyinstaller py2app
+          brew install upx create-dmg
+      
+      - name: Build macOS application
+        run: |
+          chmod +x scripts/build_macos_app.sh
+          ./scripts/build_macos_app.sh --clean --optimize
+      
+      - name: Build macOS DMG
+        run: |
+          chmod +x scripts/build_macos_dmg.sh
+          ./scripts/build_macos_dmg.sh
+      
+      - name: Test macOS application
+        run: |
+          python scripts/test_distribution.py --platform macos
+      
+      - name: Upload macOS application
         uses: actions/upload-artifact@v3
         with:
-          name: cryptobot-linux-${{ steps.get_version.outputs.VERSION }}-tar
-          path: dist/cryptobot-linux-${{ steps.get_version.outputs.VERSION }}.tar.gz
-      
-      - name: Upload single-file executable
-        uses: actions/upload-artifact@v3
-        with:
-          name: cryptobot-linux-${{ steps.get_version.outputs.VERSION }}-bin
-          path: dist/cryptobot-linux-${{ steps.get_version.outputs.VERSION }}
-      
-      - name: Create release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          files: |
-            dist/cryptobot-linux-${{ steps.get_version.outputs.VERSION }}.tar.gz
-            dist/cryptobot-linux-${{ steps.get_version.outputs.VERSION }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: cryptobot-macos
+          path: |
+            dist/CryptoBot.dmg
+          if-no-files-found: error
 
   create-release:
-    name: Create Release
-    needs: [build-windows, build-linux]
+    needs: [build-windows, build-linux, build-macos]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
         with:
-          fetch-depth: 0
+          path: artifacts
       
-      - name: Get version
-        id: get_version
-        run: |
-          VERSION="${GITHUB_REF#refs/tags/v}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-      
-      - name: Generate changelog
-        id: changelog
-        run: |
-          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
-          if [ -z "$PREVIOUS_TAG" ]; then
-            git log --pretty=format:"* %s (%h)" > CHANGELOG.md
-          else
-            git log --pretty=format:"* %s (%h)" $PREVIOUS_TAG..HEAD > CHANGELOG.md
-          fi
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          cat CHANGELOG.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-      
-      - name: Create release
+      - name: Create Release
+        id: create_release
         uses: softprops/action-gh-release@v1
         with:
-          name: Cryptobot v${{ steps.get_version.outputs.VERSION }}
-          body: |
-            # Cryptobot v${{ steps.get_version.outputs.VERSION }}
-            
-            ## Changes
-            ${{ steps.changelog.outputs.CHANGELOG }}
-            
-            ## Downloads
-            
-            ### Windows
-            * [Windows Installer (EXE)](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/cryptobot-windows-${{ steps.get_version.outputs.VERSION }}.exe)
-            * [Windows ZIP Archive](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/cryptobot-windows-${{ steps.get_version.outputs.VERSION }}.zip)
-            
-            ### Linux
-            * [Linux Binary](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/cryptobot-linux-${{ steps.get_version.outputs.VERSION }})
-            * [Linux Tarball](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/cryptobot-linux-${{ steps.get_version.outputs.VERSION }}.tar.gz)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            artifacts/cryptobot-windows/cryptobot-windows.zip
+            artifacts/cryptobot-windows/cryptobot_onefile.exe
+            artifacts/cryptobot-linux/cryptobot-linux.tar.gz
+            artifacts/cryptobot-linux/cryptobot_onefile
+            artifacts/cryptobot-macos/CryptoBot.dmg
+          draft: false
+          prerelease: false
+          generate_release_notes: true

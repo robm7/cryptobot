@@ -56,7 +56,7 @@ python -m pip install --upgrade pip
 
 # Install core dependencies
 Log "Installing core dependencies..."
-pip install -r requirements.txt
+pip install -r ..\..\requirements.txt
 
 # Install service-specific dependencies
 Log "Installing service-specific dependencies..."
@@ -64,21 +64,21 @@ Log "Installing service-specific dependencies..."
 # Check if service-specific requirements files exist and install them
 $services = @("auth", "strategy", "backtest", "trade", "data")
 
-foreach ($service in $services) {
-    $requirementsFile = "$service\requirements.txt"
-    if (Test-Path $requirementsFile) {
-        Log "Installing dependencies for $service service..."
-        pip install -r $requirementsFile
-    } else {
-        Log "Warning: No requirements.txt found for $service service."
-    }
-}
+# foreach ($service in $services) {
+#     $requirementsFile = "..\..\$service\requirements.txt"
+#     if (Test-Path $requirementsFile) {
+#         Log "Installing dependencies for $service service..."
+#         pip install -r $requirementsFile
+#     } else {
+#         Log "Warning: No requirements.txt found for $service service."
+#     }
+# }
 
 # Install development dependencies if available
-if (Test-Path "requirements-dev.txt") {
-    Log "Installing development dependencies..."
-    pip install -r requirements-dev.txt
-}
+# if (Test-Path "..\..\requirements-dev.txt") { # Corrected path in condition
+#     Log "Installing development dependencies..."
+#     pip install -r ..\..\requirements-dev.txt
+# }
 
 # Create a script to activate the virtual environment
 Log "Creating activation script..."
@@ -114,40 +114,56 @@ $runContent = @"
 # Cryptobot Run Script
 # This script activates the virtual environment and starts the Cryptobot services
 
-# Source the activation script
+# Source the activation script (activates venv for this run_cryptobot.ps1 script's session)
+# and loads .env variables into this session.
 .\activate_env.ps1
 
-# Start the services
+# Define paths relative to this script (run_cryptobot.ps1)
+`$ScriptRootForRunScript = `$PSScriptRoot
+`$ProjectRootForRunScript = Resolve-Path "`$ScriptRootForRunScript\..\.." -ErrorAction SilentlyContinue
+`$VenvActivatePathForRunScript = Resolve-Path "`$ScriptRootForRunScript\venv\Scripts\Activate.ps1" -ErrorAction SilentlyContinue
+
+if (-not `$ProjectRootForRunScript) { Write-Error "Could not resolve Project Root from `$ScriptRootForRunScript\..\.."; exit 1 }
+if (-not `$VenvActivatePathForRunScript) { Write-Error "Could not resolve Venv Activate Path from `$ScriptRootForRunScript\venv\Scripts\Activate.ps1"; exit 1 }
+
+Write-Host "Project Root for services: `$ProjectRootForRunScript"
+Write-Host "Venv Activate Path for services: `$VenvActivatePathForRunScript"
 Write-Host "Starting Cryptobot services..."
 
 # Function to start a service
 function Start-CryptobotService {
     param (
         [string]`$ServiceName,
-        [string]`$Directory
+        [string]`$ServiceModule # e.g., auth, data
     )
     
-    Write-Host "Starting `$ServiceName Service..."
-    Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", "cd `$Directory; .\venv\Scripts\Activate.ps1; python main.py"
+    Write-Host "Starting `$ServiceName Service (module: `$ServiceModule)..."
+    # Command to be run in the new PowerShell window:
+    # 1. Change to Project Root
+    # 2. Activate the virtual environment using its full path
+    # 3. Run the service as a Python module
+    `$ServiceCommand = "cd '`$ProjectRootForRunScript'; & '`$VenvActivatePathForRunScript'; python -m `$ServiceModule.main"
+    
+    Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-Command", `$ServiceCommand
 }
 
 # Start Auth Service
-Start-CryptobotService -ServiceName "Auth" -Directory "`$PWD\auth"
+Start-CryptobotService -ServiceName "Auth" -ServiceModule "auth"
 
 # Start Strategy Service
-Start-CryptobotService -ServiceName "Strategy" -Directory "`$PWD\strategy"
+Start-CryptobotService -ServiceName "Strategy" -ServiceModule "strategy"
 
 # Start Backtest Service
-Start-CryptobotService -ServiceName "Backtest" -Directory "`$PWD\backtest"
+Start-CryptobotService -ServiceName "Backtest" -ServiceModule "backtest"
 
 # Start Trade Service
-Start-CryptobotService -ServiceName "Trade" -Directory "`$PWD\trade"
+Start-CryptobotService -ServiceName "Trade" -ServiceModule "trade"
 
 # Start Data Service
-Start-CryptobotService -ServiceName "Data" -Directory "`$PWD\data"
+Start-CryptobotService -ServiceName "Data" -ServiceModule "data"
 
 Write-Host "All services started!"
-Write-Host "Close the terminal windows to stop the services."
+Write-Host "Close the new terminal windows to stop the individual services."
 "@
 
 Set-Content -Path "run_cryptobot.ps1" -Value $runContent

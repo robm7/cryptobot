@@ -249,52 +249,112 @@ gpg --output dist/cryptobot_onefile.sig --detach-sig dist/cryptobot_onefile
 
 You can integrate the build process into your CI/CD pipeline:
 
-### GitHub Actions Example
+### Testing Distribution Packages
+
+Before distributing the application, it's important to test the packages to ensure they work correctly. Cryptobot includes a test script that verifies the distribution packages:
+
+```bash
+# Test Windows package
+python scripts/test_distribution.py --platform windows
+
+# Test Linux package
+python scripts/test_distribution.py --platform linux
+
+# Test macOS package
+python scripts/test_distribution.py --platform macos
+
+# Test all packages
+python scripts/test_distribution.py --platform all
+```
+
+The test script performs the following checks:
+1. Extracts the distribution package
+2. Verifies that the executable runs correctly
+3. Checks that all required dependencies and resources are included
+
+### Automated Build Process
+
+Cryptobot includes a unified build script that can build installers for all supported platforms:
+
+```bash
+# Build all installers
+python scripts/build_all_installers.py
+
+# Build Windows installer only
+python scripts/build_all_installers.py --platform windows
+
+# Build Linux installer only (both DEB and RPM)
+python scripts/build_all_installers.py --platform linux
+
+# Build Linux DEB installer only
+python scripts/build_all_installers.py --platform linux --linux-type deb
+
+# Build with optimization
+python scripts/build_all_installers.py --optimize
+
+# Clean build directories before building
+python scripts/build_all_installers.py --clean
+
+# Test installers after building
+python scripts/build_all_installers.py --test
+```
+
+### GitHub Actions Integration
+
+A GitHub Actions workflow is included in the `.github/workflows/build.yml` file. This workflow automatically builds and tests the distribution packages for all supported platforms when changes are pushed to the main branches or when a new tag is created.
+
+The workflow performs the following steps:
+1. Builds the executables for Windows, Linux, and macOS
+2. Tests the distribution packages
+3. Uploads the artifacts
+4. Creates a release when a new tag is pushed
 
 ```yaml
-name: Build Executables
+name: Build and Test
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [ main, master, develop ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master, develop ]
 
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+          cache: 'pip'
       - name: Build Windows executable
         run: .\scripts\build_windows.ps1 -Clean -Optimize
+      - name: Test Windows executable
+        run: python scripts/test_distribution.py --platform windows
       - name: Upload artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
-          name: windows-executable
+          name: cryptobot-windows
           path: dist/cryptobot-windows.zip
 
-  build-linux:
+  # Similar jobs for Linux and macOS...
+
+  create-release:
+    needs: [build-windows, build-linux, build-macos]
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v2
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
         with:
-          python-version: '3.9'
-      - name: Build Linux executable
-        run: |
-          chmod +x scripts/build_linux.sh
-          ./scripts/build_linux.sh --clean --optimize
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-executable
-          path: dist/cryptobot-linux.tar.gz
+          files: |
+            artifacts/cryptobot-windows/cryptobot-windows.zip
+            artifacts/cryptobot-linux/cryptobot-linux.tar.gz
+            artifacts/cryptobot-macos/CryptoBot.dmg
 ```
 
 ## Conclusion
 
-By following this guide, you can package and distribute Cryptobot as a standalone executable for both Windows and Linux platforms. This makes it easy for users to run the application without installing Python or any dependencies.
+By following this guide, you can package and distribute Cryptobot as a standalone executable for Windows, Linux, and macOS platforms. The automated build and test process ensures that the distribution packages work correctly across all supported platforms. This makes it easy for users to run the application without installing Python or any dependencies.

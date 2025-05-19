@@ -14,6 +14,10 @@ class NotificationSettings(BaseSettings):
     twilio_account_sid: str
     twilio_auth_token: str
     twilio_from_number: str
+    
+    # Slack provider config
+    slack_webhook_url: str = ""
+    slack_default_channel: str = "#alerts"
 
     # Rate limiting
     rate_limit_per_hour: int = 100
@@ -23,7 +27,7 @@ class NotificationSettings(BaseSettings):
         env_prefix = "NOTIFICATION_"
 
 def get_provider_configs(settings: NotificationSettings) -> dict:
-    return {
+    configs = {
         NotificationChannel.EMAIL: {
             "smtp_host": settings.smtp_host,
             "smtp_port": settings.smtp_port,
@@ -36,3 +40,11 @@ def get_provider_configs(settings: NotificationSettings) -> dict:
             "from_number": settings.twilio_from_number
         }
     }
+    
+    # Only add Slack if webhook URL is configured
+    if settings.slack_webhook_url:
+        configs[NotificationChannel.SLACK] = {
+            "webhook_url": settings.slack_webhook_url
+        }
+        
+    return configs

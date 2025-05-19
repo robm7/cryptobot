@@ -7,7 +7,7 @@ commonLabels:
 resources:
 - namespace.yaml
 - auth-service/
-# Will add other services here:
-# - trade-service/
-# - strategy-service/
-# - backtest-service/
+- trade-service/
+- strategy-service/
+- backtest-service/
+- data-service/

@@ -12,11 +12,11 @@ from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 
-from database import get_db
-from models.user import User
-from auth_service import get_current_active_user
-from key_manager import KeyManager, KeyStatus
-from schemas.api_key import (
+from database.db import get_db # Corrected import
+from ..models.user import User # Corrected import
+from ..auth_service import get_current_active_user # Corrected import
+from ..key_manager import KeyManager, KeyStatus # Corrected import
+from ..schemas.api_key import ( # Corrected import
     APIKeyCreate,
     APIKeyRotate,
     APIKeyRevoke,

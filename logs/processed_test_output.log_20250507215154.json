@@ -1,0 +1,27 @@
+{
+  "file_info": {
+    "path": "test_output.log",
+    "size_bytes": 60126,
+    "line_count": 1471,
+    "processed_at": "2025-05-07T21:51:54.729167"
+  },
+  "summary": {
+    "chunks_processed": 2,
+    "test_results": {
+      "total": 0,
+      "passed": 0,
+      "failed": 0
+    },
+    "errors": {
+      "total": 0,
+      "by_type": {}
+    },
+    "logs": {
+      "total": 0,
+      "by_level": {}
+    }
+  },
+  "data": [],
+  "test_results": [],
+  "errors": []
+}

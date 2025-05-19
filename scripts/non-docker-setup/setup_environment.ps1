@@ -101,12 +101,13 @@ if ($pgService -and $pgService.Status -eq "Running") {
     Log "Warning: PostgreSQL may not be running correctly."
 }
 
-# Check if Redis is running
+# Check if Redis or Memurai is running
 $redisService = Get-Service -Name "Redis" -ErrorAction SilentlyContinue
-if ($redisService -and $redisService.Status -eq "Running") {
-    Log "Redis is running correctly."
+$memuraiService = Get-Service -Name "Memurai" -ErrorAction SilentlyContinue # Check for Memurai
+if (($redisService -and $redisService.Status -eq "Running") -or ($memuraiService -and $memuraiService.Status -eq "Running")) { # Modified condition
+    Log "Redis-compatible service (Redis or Memurai) is running correctly."
 } else {
-    Log "Warning: Redis may not be running correctly."
+    Log "Warning: Redis-compatible service (Redis or Memurai) may not be running correctly."
 }
 
 # Check if Python virtual environment was created

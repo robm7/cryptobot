@@ -4,6 +4,7 @@ from typing import Optional
 import logging
 from twilio.rest import Client
 from .service import NotificationChannel, NotificationTemplate
+from .providers.slack_provider import SlackProvider
 
 class EmailProvider:
     def __init__(self, smtp_host: str, smtp_port: int, username: str, password: str):
@@ -14,9 +15,9 @@ class EmailProvider:
         self.logger = logging.getLogger(__name__)
 
     async def send(
-        self, 
-        to_email: str, 
-        template: NotificationTemplate, 
+        self,
+        to_email: str,
+        template: NotificationTemplate,
         context: Optional[dict] = None
     ) -> bool:
         try:
@@ -46,9 +47,9 @@ class SMSProvider:
         self.logger = logging.getLogger(__name__)
 
     async def send(
-        self, 
-        to_phone: str, 
-        template: NotificationTemplate, 
+        self,
+        to_phone: str,
+        template: NotificationTemplate,
         context: Optional[dict] = None
     ) -> bool:
         try:
@@ -81,5 +82,9 @@ class NotificationProviderFactory:
                 account_sid=config['account_sid'],
                 auth_token=config['auth_token'],
                 from_number=config['from_number']
+            )
+        elif channel == NotificationChannel.SLACK:
+            return SlackProvider(
+                webhook_url=config['webhook_url']
             )
         raise ValueError(f"Unsupported channel: {channel}")

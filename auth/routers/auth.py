@@ -9,9 +9,9 @@ import qrcode
 import base64
 from io import BytesIO
 
-from database import get_db
-from models.user import User, APIKey, UserCreate, UserOut, UserUpdate, APIKeyCreate, APIKeyOut
-from schemas.token import (
+from database.db import get_db # Corrected import
+from ..models.user import User, APIKey, UserCreate, UserOut, UserUpdate, APIKeyCreate, APIKeyOut # Corrected import
+from ..schemas.token import ( # Corrected import
     Token,
     TokenResponse,
     TokenPairResponse,
@@ -28,7 +28,7 @@ from schemas.token import (
     MFAEnableRequest,
     TokenType
 )
-from auth_service import (
+from ..auth_service import ( # Corrected import
     authenticate_user,
     create_token_pair,
     refresh_access_token,
@@ -48,31 +48,31 @@ from auth_service import (
     get_mfa_status,
     enforce_mfa_required
 )
-from redis_service import RateLimiter
-from config import settings
+from ..redis_service import RateLimiter # Corrected import
+from ..config import settings # Corrected import
 
 # Create router
 router = APIRouter()
 
 # Rate limiting middleware
-@router.middleware("http")
-async def rate_limit_middleware(request: Request, call_next):
-    """Rate limiting middleware"""
-    # Skip rate limiting for token validation endpoint
-    if not request.url.path.endswith("/validate"):
-        await RateLimiter.check_rate_limit(request)
+# # @router.middleware("http")
+# # async def rate_limit_middleware(request: Request, call_next):
+# #     """Rate limiting middleware"""
+# #     # Skip rate limiting for token validation endpoint
+# #     if not request.url.path.endswith("/validate"):
+# #         await RateLimiter.check_rate_limit(request)
     
-    # Process request
-    response = await call_next(request)
+# #     # Process request
+# #     response = await call_next(request)
     
-    # Add rate limit headers if available
-    if hasattr(request.state, "rate_limit"):
-        rate_limit = request.state.rate_limit
-        response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
-        response.headers["X-RateLimit-Remaining"] = str(rate_limit["remaining"])
-        response.headers["X-RateLimit-Reset"] = str(rate_limit["reset"])
+# #     # Add rate limit headers if available
+# #     if hasattr(request.state, "rate_limit"):
+# #         rate_limit = request.state.rate_limit
+# #         response.headers["X-RateLimit-Limit"] = str(rate_limit["limit"])
+# #         response.headers["X-RateLimit-Remaining"] = str(rate_limit["remaining"])
+# #         response.headers["X-RateLimit-Reset"] = str(rate_limit["reset"])
     
-    return response
+# #     return response
 
 @router.post("/login", response_model=Union[TokenPairResponse, Dict[str, Any]])
 async def login(

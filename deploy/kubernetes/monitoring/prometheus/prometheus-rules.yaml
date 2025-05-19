@@ -1,0 +1,217 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-rules
+  namespace: default
+  labels:
+    app: prometheus
+data:
+  alert-rules.yml: |
+    groups:
+    # Service Availability Alerts
+    - name: service_availability
+      rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "The service {{ $labels.job }} has been down for more than 1 minute."
+          
+      - alert: HighServiceErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) by (job) / sum(rate(http_requests_total[5m])) by (job) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "High error rate detected for {{ $labels.job }}"
+          description: "Service {{ $labels.job }} has a high HTTP error rate (> 5%)."
+          
+      - alert: ServiceEndpointSlow
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, job, endpoint)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "Slow response time for {{ $labels.job }}/{{ $labels.endpoint }}"
+          description: "Endpoint {{ $labels.endpoint }} in service {{ $labels.job }} has a 95th percentile response time > 1s."
+
+    # Resource Utilization Alerts
+    - name: resource_utilization
+      rules:
+      - alert: HighCPUUsage
+        expr: (sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (pod) / sum(container_spec_cpu_quota{container!=""}/container_spec_cpu_period{container!=""}) by (pod)) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "High CPU usage for pod {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} has high CPU usage (> 80% of request) for more than 5 minutes."
+          
+      - alert: HighMemoryUsage
+        expr: (sum(container_memory_working_set_bytes{container!=""}) by (pod) / sum(container_spec_memory_limit_bytes{container!=""}) by (pod)) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "High memory usage for pod {{ $labels.pod }}"
+          description: "Pod {{ $labels.pod }} has high memory usage (> 80% of limit) for more than 5 minutes."
+          
+      - alert: PersistentVolumeUsageCritical
+        expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.85
+        for: 5m
+        labels:
+          severity: critical
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "PV {{ $labels.persistentvolumeclaim }} is almost full"
+          description: "PersistentVolume {{ $labels.persistentvolumeclaim }} is {{ $value | humanizePercentage }} full."
+
+    # Kubernetes-specific Alerts
+    - name: kubernetes
+      rules:
+      - alert: KubePodCrashLooping
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is restarting {{ $value }} times / 15 minutes."
+          
+      - alert: KubePodNotReady
+        expr: sum by (namespace, pod) (kube_pod_status_phase{phase=~"Pending|Unknown"}) > 0
+        for: 15m
+        labels:
+          severity: warning
+          team: "{{ $labels.team }}"
+        annotations:
+          summary: "Pod {{ $labels.pod }} is not ready"
+          description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state for more than 15 minutes."
+          
+      - alert: KubeNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 15m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: "Node {{ $labels.node }} is not ready"
+          description: "Node {{ $labels.node }} has been in a non-ready state for more than 15 minutes."
+
+    # Cryptobot-specific Alerts
+    - name: cryptobot_trade_service
+      rules:
+      - alert: TradeExecutionFailure
+        expr: rate(trade_execution_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: trading
+        annotations:
+          summary: "Trade execution failures detected"
+          description: "The trade service is experiencing execution failures at a rate of {{ $value }} per second."
+          
+      - alert: OrderExecutionLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(order_execution_duration_seconds_bucket[5m])) by (le)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: trading
+        annotations:
+          summary: "Order execution latency is high"
+          description: "95th percentile of order execution latency is above 2 seconds."
+          
+      - alert: PortfolioValueDrop
+        expr: (portfolio_current_value / portfolio_previous_value) < 0.95
+        for: 5m
+        labels:
+          severity: warning
+          team: trading
+        annotations:
+          summary: "Portfolio value dropped by more than 5%"
+          description: "The portfolio value has dropped by more than 5% in the last measurement period."
+
+    - name: cryptobot_strategy_service
+      rules:
+      - alert: StrategyEvaluationFailure
+        expr: rate(strategy_evaluation_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: strategy
+        annotations:
+          summary: "Strategy evaluation failures detected"
+          description: "The strategy service is experiencing evaluation failures at a rate of {{ $value }} per second."
+          
+      - alert: StrategySignalGenerationLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(strategy_signal_generation_duration_seconds_bucket[5m])) by (le, strategy)) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: strategy
+        annotations:
+          summary: "Strategy {{ $labels.strategy }} signal generation latency is high"
+          description: "95th percentile of signal generation latency for strategy {{ $labels.strategy }} is above 1 second."
+
+    - name: cryptobot_data_service
+      rules:
+      - alert: DataFetchFailure
+        expr: rate(data_fetch_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: critical
+          team: data
+        annotations:
+          summary: "Data fetch failures detected"
+          description: "The data service is experiencing fetch failures at a rate of {{ $value }} per second."
+          
+      - alert: ExternalAPIRateLimitApproaching
+        expr: rate(api_calls_total[1h]) > 0.8 * api_rate_limit
+        for: 10m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "API rate limit for {{ $labels.exchange }} approaching threshold"
+          description: "The current API call rate for {{ $labels.exchange }} is approaching the rate limit (> 80%)."
+          
+      - alert: HighDataProcessingLatency
+        expr: histogram_quantile(0.95, sum(rate(data_processing_duration_seconds_bucket[5m])) by (le, data_type)) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: data
+        annotations:
+          summary: "Data processing latency for {{ $labels.data_type }} is high"
+          description: "95th percentile of data processing latency for {{ $labels.data_type }} is above 2 seconds."
+
+    - name: cryptobot_backtest_service
+      rules:
+      - alert: BacktestExecutionFailure
+        expr: rate(backtest_execution_failures_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          team: strategy
+        annotations:
+          summary: "Backtest execution failures detected"
+          description: "The backtest service is experiencing execution failures at a rate of {{ $value }} per second."
+          
+      - alert: LongRunningBacktest
+        expr: backtest_duration_seconds > 1800
+        for: 30m
+        labels:
+          severity: warning
+          team: strategy
+        annotations:
+          summary: "Long-running backtest detected"
+          description: "A backtest has been running for more than 30 minutes."

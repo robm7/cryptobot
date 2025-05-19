@@ -35,6 +35,7 @@ function createDrawdownChart(canvasId, equityCurve, timestamps) {
     let inDrawdown = false;
     let periodStart = null;
     let maxDrawdown = 0;
+    let maxDrawdownDate = null;
     
     for (let i = 0; i < drawdowns.length; i++) {
         if (drawdowns[i].y < -1) { // Consider drawdowns greater than 1%
@@ -42,15 +43,18 @@ function createDrawdownChart(canvasId, equityCurve, timestamps) {
                 inDrawdown = true;
                 periodStart = drawdowns[i].x;
                 maxDrawdown = drawdowns[i].y;
-            } else {
-                maxDrawdown = Math.min(maxDrawdown, drawdowns[i].y);
+                maxDrawdownDate = drawdowns[i].x;
+            } else if (drawdowns[i].y < maxDrawdown) {
+                maxDrawdown = drawdowns[i].y;
+                maxDrawdownDate = drawdowns[i].x;
             }
         } else if (inDrawdown) {
             inDrawdown = false;
             drawdownPeriods.push({
                 start: periodStart,
                 end: drawdowns[i-1].x,
-                maxDrawdown: maxDrawdown
+                maxDrawdown: maxDrawdown,
+                maxDrawdownDate: maxDrawdownDate
             });
         }
     }
@@ -60,7 +64,8 @@ function createDrawdownChart(canvasId, equityCurve, timestamps) {
         drawdownPeriods.push({
             start: periodStart,
             end: drawdowns[drawdowns.length-1].x,
-            maxDrawdown: maxDrawdown
+            maxDrawdown: maxDrawdown,
+            maxDrawdownDate: maxDrawdownDate
         });
     }
     
@@ -171,6 +176,7 @@ function updateDrawdownMetricsTable(tableId, drawdownPeriods) {
             <td class="px-4 py-2">${period.end.toLocaleDateString()}</td>
             <td class="px-4 py-2">${duration} days</td>
             <td class="px-4 py-2 text-red-500">${period.maxDrawdown.toFixed(2)}%</td>
+            <td class="px-4 py-2">${period.maxDrawdownDate.toLocaleDateString()}</td>
         `;
         
         tbody.appendChild(row);

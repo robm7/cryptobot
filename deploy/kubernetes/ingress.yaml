@@ -1,0 +1,51 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cryptobot-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx" # Example: specify ingress controller
+    # If services require path rewriting (e.g., expecting / instead of /api/trade/),
+    # uncomment and adjust the following for nginx-ingress:
+    # nginx.ingress.kubernetes.io/rewrite-target: /$2
+    # And paths would need to be defined like:
+    # - path: /api/trade(/|$)(.*)
+spec:
+  rules:
+  - host: cryptobot.example.com
+    http:
+      paths:
+      - path: /api/trade/
+        pathType: Prefix
+        backend:
+          service:
+            name: trade-service
+            port:
+              number: 80
+      - path: /api/strategy/
+        pathType: Prefix
+        backend:
+          service:
+            name: strategy-service
+            port:
+              number: 80
+      - path: /api/backtest/
+        pathType: Prefix
+        backend:
+          service:
+            name: backtest-service
+            port:
+              number: 80
+      - path: /api/data/
+        pathType: Prefix
+        backend:
+          service:
+            name: data-service
+            port:
+              number: 80
+      - path: /api/auth/
+        pathType: Prefix
+        backend:
+          service:
+            name: auth-service # Assuming the auth service is named 'auth-service'
+            port:
+              number: 80 # Assuming auth-service also uses port 80 for its K8s service

@@ -1,24 +1,24 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path # Added Path
 from sqlalchemy.orm import Session
 from typing import List, Optional, Dict, Any
 import logging
 
-from models.strategy import Strategy, StrategyVersion
-from schemas.strategy import (
+from ..models.strategy import Strategy, StrategyVersion # Corrected import
+from ..schemas.strategy import ( # Corrected import
     StrategyCreate,
     StrategyUpdate,
     StrategyResponse,
     StrategyVersion as SchemaStrategyVersion
 )
-from database import get_db
-from auth_middleware import get_current_user, has_role
+from ..database import get_db # Corrected import
+from ..auth_middleware import get_current_user, has_role # Corrected import
 
 from fastapi.security import OAuth2PasswordBearer
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 router = APIRouter(
-    prefix="/strategies",
+    # prefix="/strategies", # Prefix is handled by main app
     tags=["strategies"],
     responses={
         401: {"description": "Unauthorized"},
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
                     "example": [{
                         "id": 1,
                         "name": "Mean Reversion",
-                        "is_active": true,
+                        "is_active": True,
                         "version": 2
                     }]
                 }
@@ -92,7 +92,7 @@ def list_strategies(
                         "name": "Mean Reversion",
                         "description": "Basic mean reversion strategy",
                         "parameters": {"lookback": 14, "threshold": 1.5},
-                        "is_active": true,
+                        "is_active": True,
                         "version": 2,
                         "versions": [
                             {"version": 1, "parameters": {"lookback": 10, "threshold": 1.0}},
@@ -148,13 +148,51 @@ def get_strategy(
             detail="Error retrieving strategy"
         )
 
-@router.post("/", response_model=StrategyResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/",
+    response_model=StrategyResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a new trading strategy",
+    description="Allows users with 'admin' or 'trader' roles to create a new strategy. An initial version is automatically created.",
+    response_description="The newly created strategy with its initial version.",
+    responses={
+        201: {
+            "description": "Strategy created successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 2,
+                        "name": "New RSI Strategy",
+                        "description": "A strategy based on RSI.",
+                        "parameters": {"rsi_period": 14, "buy_threshold": 30, "sell_threshold": 70},
+                        "is_active": True,
+                        "version": 1,
+                        "created_at": "2025-05-17T10:00:00Z",
+                        "updated_at": "2025-05-17T10:00:00Z",
+                        "versions": [{
+                            "version": 1,
+                            "created_at": "2025-05-17T10:00:00Z",
+                            "parameters": {"rsi_period": 14, "buy_threshold": 30, "sell_threshold": 70}
+                        }]
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid input data"},
+        500: {"description": "Internal server error"}
+    }
+)
 def create_strategy(
     strategy: StrategyCreate,
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(has_role(["admin", "trader"]))
 ):
-    """Create a new strategy"""
+    """Create a new strategy.
+
+    - Requires 'admin' or 'trader' role.
+    - Validates input based on `StrategyCreate` schema.
+    - Automatically creates version 1 of the strategy.
+    """
     try:
         db_strategy = Strategy(**strategy.dict())
         db.add(db_strategy)
@@ -180,14 +218,53 @@ def create_strategy(
             detail=str(e)
         )
 
-@router.put("/{id}", response_model=StrategyResponse)
+@router.put(
+    "/{id}",
+    response_model=StrategyResponse,
+    summary="Update an existing strategy",
+    description="Allows users with 'admin' or 'trader' roles to update an existing strategy. If parameters are changed, a new version is created.",
+    response_description="The updated strategy, potentially with a new version.",
+    responses={
+        200: {
+            "description": "Strategy updated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Mean Reversion Enhanced",
+                        "description": "Enhanced mean reversion strategy",
+                        "parameters": {"lookback": 20, "threshold": 2.0},
+                        "is_active": True,
+                        "version": 3, # Incremented version
+                        "created_at": "2025-05-16T10:00:00Z",
+                        "updated_at": "2025-05-17T11:00:00Z",
+                        "versions": [
+                            {"version": 1, "created_at": "2025-05-10T10:00:00Z", "parameters": {"lookback": 10, "threshold": 1.0}},
+                            {"version": 2, "created_at": "2025-05-16T10:00:00Z", "parameters": {"lookback": 14, "threshold": 1.5}},
+                            {"version": 3, "created_at": "2025-05-17T11:00:00Z", "parameters": {"lookback": 20, "threshold": 2.0}}
+                        ]
+                    }
+                }
+            }
+        },
+        400: {"description": "Invalid input data"},
+        404: {"description": "Strategy not found"},
+        500: {"description": "Internal server error"}
+    }
+)
 def update_strategy(
-    id: int,
+    id: int = Path(..., description="ID of the strategy to update", example=1),
+    *,  # This makes subsequent arguments keyword-only
     strategy: StrategyUpdate,
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(has_role(["admin", "trader"]))
 ):
-    """Update an existing strategy and create new version if parameters changed"""
+    """Update an existing strategy.
+
+    - If `parameters` are changed, a new version of the strategy is created.
+    - Other fields like `name`, `description`, `is_active` are updated directly.
+    - Requires 'admin' or 'trader' role.
+    """
     try:
         db_strategy = db.query(Strategy).filter(Strategy.id == id).first()
         if not db_strategy:
@@ -232,13 +309,28 @@ def update_strategy(
             detail=str(e)
         )
 
-@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a strategy",
+    description="Allows users with 'admin' role to delete a strategy and all its associated versions. Returns no content on success.",
+    response_description="No content returned on successful deletion.",
+    responses={
+        204: {"description": "Strategy deleted successfully"},
+        404: {"description": "Strategy not found"},
+        500: {"description": "Internal server error"}
+    }
+)
 def delete_strategy(
-    id: int,
+    id: int = Path(..., description="ID of the strategy to delete", example=1),
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(has_role(["admin"]))
 ):
-    """Delete a strategy and its versions"""
+    """Delete a strategy and its versions.
+
+    - Requires 'admin' role.
+    - This is a permanent deletion.
+    """
     try:
         strategy = db.query(Strategy).filter(Strategy.id == id).first()
         if not strategy:
@@ -265,22 +357,90 @@ def delete_strategy(
             detail="Error deleting strategy"
         )
 
-@router.post("/{id}/activate", response_model=StrategyResponse)
+@router.post(
+    "/{id}/activate",
+    response_model=StrategyResponse,
+    summary="Activate a trading strategy",
+    description="Allows users with 'admin' or 'trader' roles to activate a specific strategy, making it eligible for live trading or execution.",
+    response_description="The strategy with its 'is_active' status set to true.",
+    responses={
+        200: {
+            "description": "Strategy activated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Mean Reversion",
+                        "description": "Basic mean reversion strategy",
+                        "parameters": {"lookback": 14, "threshold": 1.5},
+                        "is_active": True, # Now true
+                        "version": 2,
+                        "created_at": "2025-05-16T10:00:00Z",
+                        "updated_at": "2025-05-17T11:30:00Z", # Updated timestamp
+                        "versions": [
+                             {"version": 1, "created_at": "2025-05-10T10:00:00Z", "parameters": {"lookback": 10, "threshold": 1.0}},
+                             {"version": 2, "created_at": "2025-05-16T10:00:00Z", "parameters": {"lookback": 14, "threshold": 1.5}}
+                        ]
+                    }
+                }
+            }
+        },
+        404: {"description": "Strategy not found"},
+        500: {"description": "Internal server error"}
+    }
+)
 def activate_strategy(
-    id: int,
+    id: int = Path(..., description="ID of the strategy to activate", example=1),
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(has_role(["admin", "trader"]))
 ):
-    """Activate a strategy"""
+    """Activate a strategy, making it live.
+
+    - Requires 'admin' or 'trader' role.
+    """
     return _set_strategy_active_status(id, True, db)
 
-@router.post("/{id}/deactivate", response_model=StrategyResponse)
+@router.post(
+    "/{id}/deactivate",
+    response_model=StrategyResponse,
+    summary="Deactivate a trading strategy",
+    description="Allows users with 'admin' or 'trader' roles to deactivate a specific strategy, preventing it from live trading or execution.",
+    response_description="The strategy with its 'is_active' status set to false.",
+    responses={
+        200: {
+            "description": "Strategy deactivated successfully",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "id": 1,
+                        "name": "Mean Reversion",
+                        "description": "Basic mean reversion strategy",
+                        "parameters": {"lookback": 14, "threshold": 1.5},
+                        "is_active": False, # Now false
+                        "version": 2,
+                        "created_at": "2025-05-16T10:00:00Z",
+                        "updated_at": "2025-05-17T11:35:00Z", # Updated timestamp
+                        "versions": [
+                             {"version": 1, "created_at": "2025-05-10T10:00:00Z", "parameters": {"lookback": 10, "threshold": 1.0}},
+                             {"version": 2, "created_at": "2025-05-16T10:00:00Z", "parameters": {"lookback": 14, "threshold": 1.5}}
+                        ]
+                    }
+                }
+            }
+        },
+        404: {"description": "Strategy not found"},
+        500: {"description": "Internal server error"}
+    }
+)
 def deactivate_strategy(
-    id: int,
+    id: int = Path(..., description="ID of the strategy to deactivate", example=1),
     db: Session = Depends(get_db),
     current_user: Dict[str, Any] = Depends(has_role(["admin", "trader"]))
 ):
-    """Deactivate a strategy"""
+    """Deactivate a strategy, making it inactive.
+    
+    - Requires 'admin' or 'trader' role.
+    """
     return _set_strategy_active_status(id, False, db)
 
 def _set_strategy_active_status(

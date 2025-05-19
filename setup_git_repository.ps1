@@ -82,20 +82,55 @@ if ($setupRemote -eq "y") {
         $repoName = "cryptobot"
     }
     
-    git remote add origin "https://github.com/$username/$repoName.git"
-    Write-ColorOutput "Remote 'origin' added." "Green"
+    # Check if remote origin already exists
+    $remoteExists = git remote | Select-String -Pattern "^origin$"
+    
+    if ($remoteExists) {
+        Write-ColorOutput "Remote 'origin' already exists." "Yellow"
+        $action = Read-Host "Do you want to (r)emove it, use a (d)ifferent name, or (s)kip? (r/d/s)"
+        
+        if ($action -eq "r") {
+            git remote remove origin
+            git remote add origin "https://github.com/$username/$repoName.git"
+            Write-ColorOutput "Remote 'origin' removed and re-added." "Green"
+        }
+        elseif ($action -eq "d") {
+            $remoteName = Read-Host "Enter a new remote name"
+            git remote add $remoteName "https://github.com/$username/$repoName.git"
+            Write-ColorOutput "Remote '$remoteName' added." "Green"
+        }
+        else {
+            Write-ColorOutput "Skipped adding remote." "Yellow"
+        }
+    }
+    else {
+        git remote add origin "https://github.com/$username/$repoName.git"
+        Write-ColorOutput "Remote 'origin' added." "Green"
+    }
     
     $pushNow = Read-Host "Do you want to push to GitHub now? (y/n)"
     if ($pushNow -eq "y") {
-        git push -u origin master
+        # Rename branch from master to main if needed
+        $currentBranch = git branch --show-current
+        if ($currentBranch -eq "master") {
+            Write-ColorOutput "Renaming branch from 'master' to 'main'..." "Yellow"
+            git branch -M main
+            Write-ColorOutput "Branch renamed to 'main'." "Green"
+            git push -u origin main
+        } else {
+            git push -u origin $currentBranch
+        }
         Write-ColorOutput "Repository pushed to GitHub successfully!" "Green"
     } else {
-        Write-ColorOutput "You can push to GitHub later with: git push -u origin master" "Yellow"
+        Write-ColorOutput "You can push to GitHub later with:" "Yellow"
+        Write-ColorOutput "git branch -M main  # Rename branch from master to main" "Yellow"
+        Write-ColorOutput "git push -u origin main" "Yellow"
     }
 } else {
     Write-ColorOutput "You can set up the GitHub remote later with:" "Yellow"
     Write-ColorOutput "git remote add origin https://github.com/yourusername/cryptobot.git" "Yellow"
-    Write-ColorOutput "git push -u origin master" "Yellow"
+    Write-ColorOutput "git branch -M main  # Rename branch from master to main" "Yellow"
+    Write-ColorOutput "git push -u origin main" "Yellow"
 }
 
 # Final status

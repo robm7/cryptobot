@@ -38,7 +38,7 @@ def _get_database_url():
         return f"sqlite+aiosqlite:///{db_path}"
     
     # Validate database URLs
-    protocol_pattern = r'^(?P<protocol>sqlite\+?aiosqlite?|postgres(ql)?|mysql(\+pymysql)?)://'
+    protocol_pattern = r'^(?P<protocol>sqlite\+?aiosqlite?|postgres(ql)?(\+\w+)?|mysql(\+pymysql)?)://'
     if not re.match(protocol_pattern, url, re.IGNORECASE):
         raise ValueError(
             f"Invalid database URL format - must use one of these protocols:\n"
@@ -121,8 +121,8 @@ else:
         max_overflow=20,
         pool_timeout=30,
         pool_recycle=3600,
-        pool_pre_ping=True,
-        connect_args={"check_same_thread": False}
+        pool_pre_ping=True
+        # connect_args should not include check_same_thread for PostgreSQL
     )
 
 async_session = sessionmaker(
@@ -203,15 +203,14 @@ def get_sync_db() -> Generator[scoped_session, None, None]:
     finally:
         session.remove()
 
-def init_db(app=None) -> None:
+async def init_db(app=None) -> None: # Make init_db async
     """Initialize database tables."""
     # Only initialize async tables here - sync tables are handled by Flask-SQLAlchemy
     async def _init_async_db():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     
-    import asyncio
-    asyncio.run(_init_async_db())
+    await _init_async_db() # Await the inner async function
 
 __all__ = [
     'Base',

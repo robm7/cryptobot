@@ -71,8 +71,8 @@ class ExchangeConfigManager:
             })
             
         return ExchangeConfig(
-            api_key=os.getenv('KRAKEN_API_KEY'),
-            api_secret=os.getenv('KRAKEN_API_SECRET'),
+            api_key=os.getenv('KRAKEN_API_KEY', 'KRAKEN_API_KEY_PLACEHOLDER'),
+            api_secret=os.getenv('KRAKEN_API_SECRET', 'KRAKEN_API_SECRET_PLACEHOLDER'),
             testnet=testnet,
             additional_params=params
         )

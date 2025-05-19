@@ -6,7 +6,7 @@ This document provides step-by-step instructions to fix the Git repository setup
 
 1. Too many active changes, especially in the venv directory which should be excluded
 2. Git identity not configured
-3. Master branch not existing (no commits yet)
+3. Main branch not existing (no commits yet)
 
 ## Step 1: Configure Git Identity
 
@@ -75,8 +75,19 @@ After creating the repository on GitHub, you'll see instructions for pushing an 
 # Add the remote repository
 git remote add origin https://github.com/yourusername/cryptobot.git
 
+# If you get "remote origin already exists" error, you can:
+# Option 1: Remove the existing remote and add it again
+git remote remove origin
+git remote add origin https://github.com/yourusername/cryptobot.git
+
+# Option 2: Use a different remote name
+git remote add github https://github.com/yourusername/cryptobot.git
+
+# Rename the branch from master to main (if needed)
+git branch -M main
+
 # Push your commits to GitHub
-git push -u origin master
+git push -u origin main
 ```
 
 Replace "yourusername" with your actual GitHub username.
@@ -87,7 +98,7 @@ After completing these steps, your Git repository should be properly set up with
 
 1. A configured Git identity
 2. A proper .gitignore file excluding unnecessary files
-3. An initial commit on the master branch
+3. An initial commit on the main branch
 4. A connection to a GitHub repository
 
 You can verify the setup by running:
@@ -110,3 +121,23 @@ git status
 - Write meaningful commit messages
 - Pull changes before pushing to avoid conflicts
 - Consider using Git branches for new features or bug fixes
+
+## Renaming from Master to Main
+
+GitHub and many other Git platforms now use "main" as the default branch name instead of "master". If you have an existing repository with a "master" branch, you can rename it:
+
+```bash
+# Rename the local branch
+git branch -M main
+
+# Push the renamed branch to remote and set upstream
+git push -u origin main
+
+# If you have other collaborators, they should run:
+git fetch
+git branch -m master main
+git branch --unset-upstream
+git branch -u origin/main
+```
+
+This ensures your repository follows current best practices.

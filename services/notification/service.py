@@ -10,6 +10,7 @@ class NotificationChannel(Enum):
     EMAIL = "email"
     SMS = "sms"
     PUSH = "push"
+    SLACK = "slack"
 
 class NotificationTemplate(BaseModel):
     name: str
@@ -138,6 +139,10 @@ class NotificationService:
             return await provider.send(prefs.email, template, context)
         elif channel == NotificationChannel.SMS and prefs.phone:
             return await provider.send(prefs.phone, template, context)
+        elif channel == NotificationChannel.SLACK:
+            # For Slack, we use a default channel from preferences or context
+            slack_channel = context.get("slack_channel", "#alerts")
+            return await provider.send(slack_channel, template, context)
         
         self.logger.error(f"Missing required contact info for channel {channel}")
         return False

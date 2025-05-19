@@ -8,7 +8,7 @@ The repository currently has the following issues:
 
 1. Too many active changes, especially in the venv directory which should be excluded
 2. Git identity not configured
-3. Master branch not existing (no commits yet)
+3. Main branch not existing (no commits yet)
 
 ## Solution Files
 
@@ -58,6 +58,8 @@ If you prefer to set up the repository manually, follow the detailed instruction
   - Applying .gitignore
   - Creating the initial commit
   - Setting up a GitHub repository
+  - Handling "remote origin already exists" errors
+  - Renaming branches from "master" to "main"
   - Pushing to GitHub
 
 - **`setup_git_repository.ps1`** and **`setup_git_repository.sh`**: Automate the setup process by:
@@ -65,7 +67,8 @@ If you prefer to set up the repository manually, follow the detailed instruction
   - Resetting staged files
   - Verifying .gitignore exists
   - Staging and committing files
-  - Setting up GitHub remote
+  - Setting up GitHub remote (with handling for existing remotes)
+  - Renaming branch from "master" to "main"
   - Pushing to GitHub (optional)
 
 ## After Setup
@@ -74,7 +77,7 @@ After completing the setup, your Git repository will be properly configured with
 
 1. A configured Git identity
 2. A proper .gitignore file excluding unnecessary files
-3. An initial commit on the master branch
+3. An initial commit on the main branch
 4. A connection to a GitHub repository (if chosen)
 
 You can then proceed with normal Git operations for your development workflow.

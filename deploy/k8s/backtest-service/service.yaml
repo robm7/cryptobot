@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backtest-service
+  labels:
+    app: backtest-service
+spec:
+  type: ClusterIP
+  selector:
+    app: backtest-service
+  ports:
+  - protocol: TCP
+    port: 80 # Port the service will be available on within the cluster
+    targetPort: 8000 # Port the container is listening on

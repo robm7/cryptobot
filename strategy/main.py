@@ -1,10 +1,13 @@
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.utils import get_openapi
-from routers import strategies
+from prometheus_fastapi_instrumentator import Instrumentator # Added
+from .routers import strategies # Corrected import
 import logging
-from auth_middleware import configure_auth, get_current_user, has_role
-from config import settings
+from .auth_middleware import configure_auth, get_current_user, has_role
+from .config import settings
+from .database import get_db # Added for session factory
+from services.data.logging_middleware import RequestLoggingMiddleware # Added for audit logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -20,6 +23,9 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
+# Instrument the app with Prometheus
+Instrumentator().instrument(app).expose(app, include_in_schema=True, should_gzip=True)
+
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
@@ -28,6 +34,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add RequestLoggingMiddleware for audit logging
+# Ensure this is placed before other middleware that might depend on request.state modifications
+# or after middleware that sets up user information if audit logs need it.
+# Placing it after CORS and before auth seems reasonable.
+app.add_middleware(RequestLoggingMiddleware, db_session_factory=get_db, logger_name="strategy-service")
 
 # Configure auth middleware
 logger.info("Configuring authentication middleware")

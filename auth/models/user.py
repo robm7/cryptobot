@@ -6,11 +6,12 @@ import json
 import time
 from sqlalchemy import Column, Integer, String, Boolean, Text, ForeignKey, Table
 from sqlalchemy.orm import relationship
-from sqlalchemy.ext.declarative import declarative_base
+# from sqlalchemy.ext.declarative import declarative_base # No longer needed here
+from database.db import Base # Import shared Base
 from pydantic import BaseModel, EmailStr, Field
 from passlib.context import CryptContext
 
-Base = declarative_base()
+# Base = declarative_base() # Removed, use shared Base
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 # Association table for users and roles
@@ -177,7 +178,7 @@ class UserOut(UserBase):
     roles: List[str]
     
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class APIKeyCreate(BaseModel):
     description: str
@@ -189,4 +190,4 @@ class APIKeyOut(APIKeyCreate):
     key: str
     
     class Config:
-        orm_mode = True
+        from_attributes = True

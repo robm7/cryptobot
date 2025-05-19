@@ -1,0 +1,629 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Trade Execution Service",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/trades/orders": {
+      "post": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Create Order",
+        "description": "Create a new order (market or limit)",
+        "operationId": "create_order_api_trades_orders_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/MarketOrder"
+                  },
+                  {
+                    "$ref": "#/components/schemas/LimitOrder"
+                  }
+                ],
+                "title": "Order"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ]
+      }
+    },
+    "/api/trades/orders/{order_id}": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Get Order Status",
+        "description": "Get status of an existing order",
+        "operationId": "get_order_status_api_trades_orders__order_id__get",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Exchange"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Cancel Order",
+        "description": "Cancel an existing order",
+        "operationId": "cancel_order_api_trades_orders__order_id__delete",
+        "security": [
+          {
+            "APIKeyHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Order Id"
+            }
+          },
+          {
+            "name": "exchange",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Exchange"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "LimitOrder": {
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "title": "Exchange",
+            "example": "binance"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "example": "BTC/USDT"
+          },
+          "side": {
+            "$ref": "#/components/schemas/OrderSide"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount",
+            "example": 0.1
+          },
+          "client_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Order Id",
+            "description": "Client-assigned order ID"
+          },
+          "risk_params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskParameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "const": "limit",
+            "title": "Type",
+            "default": "limit"
+          },
+          "price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Price",
+            "example": 50000
+          },
+          "time_in_force": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TimeInForce"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time in force",
+            "default": "GTC"
+          },
+          "post_only": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Post Only",
+            "description": "Whether the order should only be a maker order",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "exchange",
+          "symbol",
+          "side",
+          "amount",
+          "price"
+        ],
+        "title": "LimitOrder",
+        "description": "Limit order - executed only at specified price or better"
+      },
+      "MarketOrder": {
+        "properties": {
+          "exchange": {
+            "type": "string",
+            "title": "Exchange",
+            "example": "binance"
+          },
+          "symbol": {
+            "type": "string",
+            "title": "Symbol",
+            "example": "BTC/USDT"
+          },
+          "side": {
+            "$ref": "#/components/schemas/OrderSide"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount",
+            "example": 0.1
+          },
+          "client_order_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Client Order Id",
+            "description": "Client-assigned order ID"
+          },
+          "risk_params": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RiskParameters"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "type": {
+            "type": "string",
+            "const": "market",
+            "title": "Type",
+            "default": "market"
+          },
+          "time_in_force": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TimeInForce"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time in force",
+            "default": "GTC"
+          }
+        },
+        "type": "object",
+        "required": [
+          "exchange",
+          "symbol",
+          "side",
+          "amount"
+        ],
+        "title": "MarketOrder",
+        "description": "Market order - executed immediately at current market price"
+      },
+      "OrderSide": {
+        "type": "string",
+        "enum": [
+          "buy",
+          "sell"
+        ],
+        "title": "OrderSide"
+      },
+      "RiskParameters": {
+        "properties": {
+          "stop_loss_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Loss Pct",
+            "description": "Stop loss percentage",
+            "example": 0.05
+          },
+          "stop_loss_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Loss Price",
+            "description": "Stop loss price"
+          },
+          "risk_tolerance": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Risk Tolerance",
+            "description": "Risk per trade as percentage of account",
+            "example": 0.01
+          },
+          "position_size_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position Size Pct",
+            "description": "Position size as percentage of account",
+            "example": 0.1
+          },
+          "max_drawdown": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Drawdown",
+            "description": "Maximum acceptable drawdown",
+            "example": 0.15
+          },
+          "max_correlation": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Correlation",
+            "description": "Maximum correlation with existing positions",
+            "example": 0.7
+          },
+          "max_concentration": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concentration",
+            "description": "Maximum concentration in portfolio",
+            "example": 0.2
+          },
+          "volatility_adjustment": {
+            "type": "boolean",
+            "title": "Volatility Adjustment",
+            "description": "Whether to adjust position size based on volatility",
+            "default": true
+          },
+          "drawdown_adjustment": {
+            "type": "boolean",
+            "title": "Drawdown Adjustment",
+            "description": "Whether to adjust position size based on drawdown",
+            "default": true
+          },
+          "correlation_adjustment": {
+            "type": "boolean",
+            "title": "Correlation Adjustment",
+            "description": "Whether to adjust position size based on correlation",
+            "default": true
+          },
+          "take_profit_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Take Profit Pct",
+            "description": "Take profit percentage",
+            "example": 0.1
+          },
+          "take_profit_price": {
+            "anyOf": [
+              {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Take Profit Price",
+            "description": "Take profit price"
+          },
+          "trailing_stop_pct": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1,
+                "exclusiveMinimum": 0
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trailing Stop Pct",
+            "description": "Trailing stop percentage",
+            "example": 0.03
+          }
+        },
+        "type": "object",
+        "title": "RiskParameters",
+        "description": "Risk parameters for order placement"
+      },
+      "TimeInForce": {
+        "type": "string",
+        "enum": [
+          "GTC",
+          "IOC",
+          "FOK"
+        ],
+        "title": "TimeInForce"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    },
+    "securitySchemes": {
+      "APIKeyHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-KEY"
+      }
+    }
+  }
+}

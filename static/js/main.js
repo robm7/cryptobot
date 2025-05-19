@@ -691,6 +691,32 @@ function displayBacktestResults(results) {
   document.getElementById('win-rate').textContent = formatPercentage(results.win_rate / 100);
   document.getElementById('avg-win').textContent = formatPercentage(results.avg_win_pct / 100);
   document.getElementById('avg-loss').textContent = formatPercentage(results.avg_loss_pct / 100);
+  
+  // Update advanced metrics
+  if (document.getElementById('downside-volatility')) {
+    document.getElementById('downside-volatility').textContent = formatPercentage(results.downside_volatility / 100);
+  }
+  if (document.getElementById('ulcer-index')) {
+    document.getElementById('ulcer-index').textContent = results.ulcer_index.toFixed(4);
+  }
+  if (document.getElementById('pain-index')) {
+    document.getElementById('pain-index').textContent = results.pain_index.toFixed(4);
+  }
+  if (document.getElementById('pain-ratio')) {
+    document.getElementById('pain-ratio').textContent = results.pain_ratio.toFixed(2);
+  }
+  if (document.getElementById('omega-ratio')) {
+    document.getElementById('omega-ratio').textContent = results.omega_ratio.toFixed(2);
+  }
+  if (document.getElementById('avg-drawdown-duration')) {
+    document.getElementById('avg-drawdown-duration').textContent = Math.round(results.avg_drawdown_duration) + ' days';
+  }
+  if (document.getElementById('max-drawdown-duration')) {
+    document.getElementById('max-drawdown-duration').textContent = Math.round(results.max_drawdown_duration) + ' days';
+  }
+  if (document.getElementById('total-trades')) {
+    document.getElementById('total-trades').textContent = results.total_trades;
+  }
 
   // Update equity curve chart
   updateBacktestChart(results.equity_curve, results.trades);
@@ -702,8 +728,8 @@ function displayBacktestResults(results) {
     
     // Create drawdown chart
     const drawdownResult = window.drawdownVisualization.createDrawdownChart(
-      'drawdown-chart', 
-      equityValues, 
+      'drawdown-chart',
+      equityValues,
       timestamps
     );
     
@@ -713,6 +739,26 @@ function displayBacktestResults(results) {
         'drawdown-table',
         drawdownResult.drawdownPeriods
       );
+    }
+  }
+  
+  // Update drawdown periods table if available from backend
+  if (results.drawdown_periods && results.drawdown_periods.length > 0) {
+    const drawdownTable = document.getElementById('drawdown-table');
+    if (drawdownTable) {
+      drawdownTable.innerHTML = '';
+      results.drawdown_periods.forEach((period, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td class="px-4 py-2">${index + 1}</td>
+          <td class="px-4 py-2">${new Date(period.start_date).toLocaleDateString()}</td>
+          <td class="px-4 py-2">${new Date(period.end_date).toLocaleDateString()}</td>
+          <td class="px-4 py-2">${period.duration}</td>
+          <td class="px-4 py-2 text-red-500">${formatPercentage(period.max_drawdown)}</td>
+          <td class="px-4 py-2">${new Date(period.max_drawdown_date).toLocaleDateString()}</td>
+        `;
+        drawdownTable.appendChild(row);
+      });
     }
   }
 }

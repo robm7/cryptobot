@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from .base_strategy import BaseStrategy
 
 logger = logging.getLogger(__name__)
@@ -187,6 +187,65 @@ class MeanReversionStrategy(BaseStrategy):
                     self.logger.info(f"Z-score exit condition met: {abs(current_z):.2f} <= {self.exit_z_score:.2f}")
         self.data['cumulative_profit'] = self.data['trade_profit'].cumsum()
         return self.data
+
+    async def process_realtime_data(self, data_point: dict) -> Optional[str]:
+        """
+        Processes a single real-time data point and generates a trading signal.
+
+        Args:
+            data_point: A dictionary containing the latest market data
+                        (e.g., {'timestamp': ..., 'open': ..., 'high': ...,
+                                'low': ..., 'close': ..., 'volume': ...}).
+
+        Returns:
+            A string signal ("BUY", "SELL") or None if no action is warranted.
+        """
+        self._update_buffer(data_point)
+
+        if len(self.data_buffer) < self.lookback_period:
+            self.logger.debug(f"Data buffer size {len(self.data_buffer)} insufficient, need {self.lookback_period}")
+            return None
+
+        # Extract close prices from the buffer for z-score calculation
+        # The buffer stores dictionaries, so we need to get the 'close' price from each
+        close_prices = pd.Series([dp['close'] for dp in self.data_buffer])
+
+        if len(close_prices) < self.lookback_period:
+             # This check is technically redundant due to the earlier buffer check,
+             # but good for safety if buffer logic changes.
+            return None
+
+        # Calculate rolling mean and standard deviation for the current buffer
+        rolling_mean = close_prices.rolling(window=self.lookback_period, min_periods=self.lookback_period).mean().iloc[-1]
+        rolling_std = close_prices.rolling(window=self.lookback_period, min_periods=self.lookback_period).std().iloc[-1]
+
+        if pd.isna(rolling_mean) or pd.isna(rolling_std) or rolling_std == 0:
+            self.logger.warning(f"Could not calculate rolling mean/std. Mean: {rolling_mean}, Std: {rolling_std}. Buffer size: {len(self.data_buffer)}")
+            return None
+
+        current_close_price = close_prices.iloc[-1]
+        current_z_score = (current_close_price - rolling_mean) / rolling_std
+        
+        self.logger.debug(f"Realtime data: Price={current_close_price:.2f}, Z-Score={current_z_score:.2f}, PosSize={self.position_size}")
+
+        # Signal Logic
+        if self.position_size == 0:  # No open position
+            if current_z_score < -self.entry_z_score:
+                self.logger.info(f"REALTIME SIGNAL: BUY triggered. Z-score: {current_z_score:.2f} < {-self.entry_z_score:.2f}")
+                return "BUY"
+            elif current_z_score > self.entry_z_score:
+                self.logger.info(f"REALTIME SIGNAL: SELL triggered. Z-score: {current_z_score:.2f} > {self.entry_z_score:.2f}")
+                return "SELL"
+        elif self.position_size > 0:  # Long position is open
+            if current_z_score >= -self.exit_z_score: # Exit long condition (price moved up towards/above mean)
+                self.logger.info(f"REALTIME SIGNAL: SELL (Exit Long) triggered. Z-score: {current_z_score:.2f} >= {-self.exit_z_score:.2f}")
+                return "SELL"
+        elif self.position_size < 0:  # Short position is open
+            if current_z_score <= self.exit_z_score: # Exit short condition (price moved down towards/below mean)
+                self.logger.info(f"REALTIME SIGNAL: BUY (Exit Short) triggered. Z-score: {current_z_score:.2f} <= {self.exit_z_score:.2f}")
+                return "BUY"
+
+        return None
 
     def get_parameters(self):
         """Return the strategy parameters as a dictionary"""

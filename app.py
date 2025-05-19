@@ -20,7 +20,7 @@ from strategies.breakout_reset import BreakoutResetStrategy
 from utils.backtest import Backtester
 from utils.realtime_data_handler import RealtimeDataHandler # Added import
 from utils.exchange_interface import MockExchangeInterface, BinanceExchangeInterface # Import both
-from auth.auth_service import password_complexity, token_required
+from auth.auth_service import token_required
 from datetime import datetime, timedelta
 import pandas as pd
 import numpy as np
